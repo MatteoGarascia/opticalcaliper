@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kerf — misura libera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F3F5F6; --surface: #FFFFFF; --ink: #1E2226; --muted: #5F6A73; --line: #D5DBDF;
+  --accent: #1C5D99; --accent-ink: #FFFFFF; --soft: #E3ECF5; --ok: #1F7A4D; --warn: #A15C07; --err: #B42318;
+  --radius-s: 6px; --radius-m: 12px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #14171A; --surface: #1D2125; --ink: #E7EAEC; --muted: #9BA5AD; --line: #343A40;
+    --accent: #6FA8DC; --accent-ink: #0E1A26; --soft: #22313F; --ok: #5BC48D; --warn: #E3A54A; --err: #F07A6E;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14171A; --surface: #1D2125; --ink: #E7EAEC; --muted: #9BA5AD; --line: #343A40;
+  --accent: #6FA8DC; --accent-ink: #0E1A26; --soft: #22313F; --ok: #5BC48D; --warn: #E3A54A; --err: #F07A6E;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Barlow", "Helvetica Neue", Arial, sans-serif; font-size: 17px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+main { max-width: 900px; margin: 0 auto; padding: 18px 14px 48px; }
+header.app { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 6px 0 14px; }
+header.app h1 { font-size: 30px; line-height: 1; margin: 0; font-weight: 700; letter-spacing: -0.5px; }
+header.app p { margin: 0; color: var(--muted); }
+#stato-cv { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+#stato-cv.pronto { color: var(--ok); } #stato-cv.errore { color: var(--err); }
+section.passo { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 16px 14px; margin-bottom: 14px; }
+section.passo > h2 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+p.guida { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+.campi { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+label.campo { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+label.campo input { font: inherit; font-size: 18px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 8px 10px; width: 100%; }
+.azioni { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button, .bottone { font: inherit; font-weight: 600; font-size: 15px; border-radius: var(--radius-s); padding: 9px 13px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; gap: 6px; -webkit-tap-highlight-color: transparent; }
+button.secondario, .bottone.secondario { background: transparent; color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+.bottone input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.foto-chip { font-weight: 500; background: var(--bg); color: var(--ink); border: 1px solid var(--line); font-size: 14px; padding: 7px 10px; }
+.foto-chip.attiva { border-color: var(--accent); background: var(--soft); }
+.foto-chip .st { font-size: 12px; }
+.st.ok { color: var(--ok); } .st.err { color: var(--err); } .st.attesa { color: var(--muted); }
+.strumenti { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--accent); border: 1px solid var(--accent); border-radius: var(--radius-s); overflow: hidden; margin-bottom: 8px; }
+.strumenti button { border: none; border-radius: 0; background: var(--surface); color: var(--accent); justify-content: center; padding: 9px 4px; font-size: 14px; }
+.strumenti button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.riga-strumenti { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 8px; font-size: 14px; color: var(--muted); }
+.riga-strumenti label { display: inline-flex; gap: 6px; align-items: center; }
+#suggerimento { font-size: 15px; color: var(--ink); background: var(--soft); border-radius: var(--radius-s); padding: 8px 10px; margin-bottom: 8px; }
+.vista { position: relative; border-radius: var(--radius-s); overflow: hidden; background: #0B0D0F; border: 1px solid var(--line); }
+canvas#vista { display: block; width: 100%; height: 62vh; min-height: 320px; touch-action: none; cursor: crosshair; }
+.zoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.zoom button { width: 40px; height: 40px; justify-content: center; padding: 0; font-size: 20px; background: rgba(20,24,28,0.75); border-color: rgba(255,255,255,0.35); color: #fff; }
+#vista-vuota { position: absolute; inset: 0; display: grid; place-items: center; color: #9BA5AD; font-size: 15px; text-align: center; padding: 20px; pointer-events: none; }
+.tabella { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 560px; }
+th, td { padding: 6px 7px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; color: var(--muted); font-size: 13px; }
+td input.nome { font: inherit; width: 8em; background: transparent; color: var(--ink); border: 1px solid transparent; border-radius: 4px; padding: 2px 4px; }
+td input.nome:focus { border-color: var(--line); outline: none; }
+td .elimina { background: transparent; border: none; color: var(--err); padding: 2px 6px; font-size: 18px; }
+td.forte { font-weight: 600; }
+.nota { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+.avviso { background: var(--soft); border-radius: var(--radius-s); padding: 9px 11px; font-size: 15px; margin-top: 10px; }
+textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; margin-top: 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-s); }
+.badge-faccia { position: absolute; left: 8px; top: 8px; background: rgba(20,24,28,0.78); color: #fff; font-size: 13px; font-weight: 600; padding: 4px 9px; border-radius: 6px; pointer-events: none; }
+#prossima b { font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <header class="app">
+    <h1>Kerf</h1>
+    <p>Calibro ottico su foto con marker — facce superiore e inferiore, angolo delle pareti</p>
+  </header>
+  <p id="stato-cv">Caricamento del motore di analisi…</p>
+
+  <section class="passo">
+    <h2>1 · Scheda marker e pezzo</h2>
+    <p class="guida">Lati della scheda misurati col calibro (bordo esterno ID 0 → ID 1 e ID 0 → ID 2). Lo spessore serve per l’angolo delle pareti.</p>
+    <div class="campi">
+      <label class="campo">Scheda, lato lungo (mm)<input id="i-l" type="text" inputmode="decimal" value="60"></label>
+      <label class="campo">Scheda, lato corto (mm)<input id="i-c" type="text" inputmode="decimal" value="40"></label>
+      <label class="campo">Spessore pezzo (mm)<input id="i-sp" type="text" inputmode="decimal" placeholder="es. 1,5"></label>
+    </div>
+    <div class="azioni" style="margin-top:12px">
+      <label class="bottone secondario"><input type="file" id="f-sessione" accept=".json,application/json">Riprendi sessione salvata</label>
+      <span id="info-sessione" class="nota" style="margin:0"></span>
+    </div>
+  </section>
+
+  <section class="passo">
+    <h2>2 · Foto</h2>
+    <p class="guida">Più foto per faccia, senza spostare pezzo e scheda tra gli scatti. Per la faccia inferiore gira il pezzo e rifai le foto.</p>
+    <div class="azioni" id="lista-foto">
+      <label class="bottone"><input type="file" id="f-top" accept="image/*" multiple>+ Foto TOP</label>
+      <label class="bottone"><input type="file" id="f-bot" accept="image/*" multiple>+ Foto BOT</label>
+      <button class="secondario" id="b-svuota" disabled>Svuota</button>
+    </div>
+    <div id="avviso-foto"></div>
+  </section>
+
+  <section class="passo">
+    <h2>3 · Misura</h2>
+    <div class="strumenti" role="group" aria-label="Strumento">
+      <button data-t="distanza" aria-pressed="true">Distanza</button>
+      <button data-t="raggio" aria-pressed="false">Raggio</button>
+      <button data-t="diametro" aria-pressed="false">Diametro</button>
+      <button data-t="angolo" aria-pressed="false">Angolo</button>
+      <button data-t="elimina" aria-pressed="false">Elimina</button>
+    </div>
+    <div class="riga-strumenti">
+      <label><input type="checkbox" id="c-aggancia" checked> Aggancia al bordo</label>
+      <button class="secondario" id="b-annulla" disabled>Annulla punto</button>
+      <button id="b-fine" disabled>Fine arco</button>
+      <button id="b-auto" disabled>Analisi automatica</button>
+    </div>
+    <div id="suggerimento"></div>
+    <div id="prossima" class="avviso" style="display:none"></div>
+    <div id="messaggio" class="avviso" style="display:none"></div>
+    <div class="vista">
+      <canvas id="vista"></canvas>
+      <div id="vista-vuota">Aggiungi una foto per iniziare</div>
+      <div id="faccia" class="badge-faccia" style="display:none"></div>
+      <div class="zoom">
+        <button id="z-piu" aria-label="Ingrandisci">+</button>
+        <button id="z-meno" aria-label="Riduci">−</button>
+        <button id="z-adatta" aria-label="Adatta" style="font-size:14px">⤢</button>
+      </div>
+    </div>
+    <p class="nota">Due dita o rotellina per lo zoom, trascina per spostare, tocca per mettere un punto. Il pezzo viene riconosciuto e messo in squadra da solo.</p>
+  </section>
+
+  <section class="passo">
+    <h2>4 · Misure</h2>
+    <div id="misure"><p class="nota" style="margin:0">Nessuna misura.</p></div>
+    <div id="pareti"></div>
+    <div class="azioni" style="margin-top:12px">
+      <button id="b-csv" disabled>Salva misure (CSV)</button>
+      <button class="secondario" id="b-json" disabled>Salva sessione</button>
+    </div>
+    <div id="csv-fallback"></div>
+  </section>
+</main>
+<script>
+// Strumento di misura ottica libera — nucleo di calcolo (porting di misura_libera.py)
+// Immagine raddrizzata con i marker ArUco; misure in mm nel sistema della scheda.
+(function (root) {
+"use strict";
+function creaLibero(cv) {
+
+const LAYOUT = { lato: 15, pos: { 0: [0, 0], 1: [45, 0], 2: [0, 25], 3: [45, 25] }, L: 60, C: 40 };
+const mediana = a => { const b = Float64Array.from(a).sort(), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : NaN; };
+const media = a => a.reduce((s, v) => s + v, 0) / a.length;
+const stdCamp = a => { if (a.length < 2) return 0; const m = media(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1)); };
+
+// ── omografia ──────────────────────────────────────────────────
+function applicaH(H, x, y) { const w = H[6] * x + H[7] * y + H[8]; return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]; }
+function molt3(A, B) { const C = new Array(9).fill(0);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) C[i * 3 + j] += A[i * 3 + k] * B[k * 3 + j]; return C; }
+
+function calibra(gray, misuraL, misuraC) {
+  const dict = cv.getPredefinedDictionary(cv.DICT_4X4_50), par = new cv.aruco_DetectorParameters();
+  par.cornerRefinementMethod = cv.CORNER_REFINE_SUBPIX; par.cornerRefinementWinSize = 7;
+  const ref = new cv.aruco_RefineParameters(10, 3, true), det = new cv.aruco_ArucoDetector(dict, par, ref);
+  const corners = new cv.MatVector(), ids = new cv.Mat(), rej = new cv.MatVector();
+  det.detectMarkers(gray, corners, ids, rej);
+  const trovati = {};
+  for (let i = 0; i < ids.rows; i++) { const id = ids.data32S[i]; if (id in LAYOUT.pos) { const c = corners.get(i), d = c.data32F;
+    trovati[id] = [[d[0], d[1]], [d[2], d[3]], [d[4], d[5]], [d[6], d[7]]]; c.delete(); } }
+  corners.delete(); ids.delete(); rej.delete(); det.delete(); ref.delete(); par.delete(); dict.delete();
+  const idsOk = Object.keys(trovati).map(Number); if (idsOk.length < 2) return null;
+  const sx = misuraL / LAYOUT.L, sy = misuraC / LAYOUT.C, img = [], mm = [];
+  for (const id of idsOk) { const [x, y] = LAYOUT.pos[id], l = LAYOUT.lato;
+    [[x, y], [x + l, y], [x + l, y + l], [x, y + l]].forEach(([a, b], k) => { img.push(trovati[id][k]); mm.push([a * sx, b * sy]); }); }
+  const rapp = [];
+  for (let i = 0; i < img.length; i++) for (let j = i + 1; j < img.length; j++) {
+    const dm = Math.hypot(mm[i][0] - mm[j][0], mm[i][1] - mm[j][1]); if (dm >= 20) rapp.push(Math.hypot(img[i][0] - img[j][0], img[i][1] - img[j][1]) / dm); }
+  const src = cv.matFromArray(img.length, 1, cv.CV_64FC2, img.flat()), dst = cv.matFromArray(mm.length, 1, cv.CV_64FC2, mm.flat());
+  const Hm = cv.findHomography(src, dst, 0); const H = Array.from(Hm.data64F); src.delete(); dst.delete(); Hm.delete();
+  let r2 = 0; img.forEach((p, i) => { const q = applicaH(H, p[0], p[1]); r2 += (q[0] - mm[i][0]) ** 2 + (q[1] - mm[i][1]) ** 2; });
+  return { H, ppm: mediana(rapp), nMarker: idsOk.length, residuoMm: Math.sqrt(r2 / img.length), angoli: trovati };
+}
+
+function inv3(m) { const [a, b, c, d, e, f, g, h, i] = m, A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g, D = a * A + b * B + c * C;
+  return [A / D, -(b * i - c * h) / D, (b * f - c * e) / D, B / D, (a * i - c * g) / D, -(a * f - c * d) / D, C / D, -(a * h - b * g) / D, (a * e - b * d) / D]; }
+
+// ruota il sistema della scheda di un multiplo di 90° perche' la vista abbia lo stesso verso della foto
+function orienta(cal, rot) {
+  const Hi = inv3(cal.H);
+  if (rot === undefined || rot === null) { const a = applicaH(Hi, 0, 0), b = applicaH(Hi, 60, 0);
+    rot = ((Math.round(Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI / 90) % 4) + 4) % 4 * 90; }
+  const t = rot * Math.PI / 180, Rm = [Math.cos(t), -Math.sin(t), 0, Math.sin(t), Math.cos(t), 0, 0, 0, 1];
+  cal.H0 = cal.H; cal.H = molt3(Rm, cal.H); cal.rot = rot; return cal;
+}
+
+
+function trovaPerGrigio(gray, cal, raggioMm = 80) {
+  const ppm = cal.ppm, W = gray.cols, Hh = gray.rows;
+  const tutti = Object.values(cal.angoli).flat(), cx = media(tutti.map(p => p[0])), cy = media(tutti.map(p => p[1]));
+  const R = Math.trunc(raggioMm * ppm), x0 = Math.max(0, Math.trunc(cx - R)), y0 = Math.max(0, Math.trunc(cy - R));
+  const x1 = Math.min(W, Math.trunc(cx + R)), y1 = Math.min(Hh, Math.trunc(cy + R)), w = x1 - x0, h = y1 - y0;
+  const roi = gray.roi(new cv.Rect(x0, y0, w, h)), g = new cv.Mat(); cv.GaussianBlur(roi, g, new cv.Size(0, 0), 1.5, 1.5, cv.BORDER_DEFAULT); roi.delete();
+  const gd = g.data, Hi0 = inv3(cal.H0), camp = [];
+  for (let u = 18; u <= 42; u += 4) for (let v = 17; v <= 23; v += 2) { const q = applicaH(Hi0, u, v), xi = Math.trunc(q[0]), yi = Math.trunc(q[1]);
+    if (xi >= 0 && xi < W && yi >= 0 && yi < Hh) camp.push(gray.data[yi * W + xi]); }
+  const carta = camp.length ? mediana(camp) : 200, lim = carta - Math.max(15, 0.08 * carta);
+  const hist = new Float64Array(256); let nd = 0; for (let i = 0; i < gd.length; i++) if (gd[i] < lim) { hist[gd[i]]++; nd++; }
+  if (nd < 100) { g.delete(); return null; }
+  let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i]; let sB = 0, wB = 0, best = -1, thr = 0;
+  for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = nd - wB; if (!wF) break; sB += t * hist[t];
+    const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) ** 2; if (v > best) { best = v; thr = t; } }
+  const ogg = new cv.Mat(h, w, cv.CV_8U), od = ogg.data;
+  for (let i = 0; i < gd.length; i++) od[i] = (gd[i] < lim && gd[i] > thr) ? 1 : 0;
+  const mg = ppm * 2, xs = tutti.map(p => p[0]), ys = tutti.map(p => p[1]);
+  const ax0 = Math.max(0, Math.trunc(Math.min(...xs) - mg - x0)), ay0 = Math.max(0, Math.trunc(Math.min(...ys) - mg - y0));
+  const ax1 = Math.min(w, Math.trunc(Math.max(...xs) + mg - x0)), ay1 = Math.min(h, Math.trunc(Math.max(...ys) + mg - y0));
+  for (let y = ay0; y < ay1; y++) for (let x = ax0; x < ax1; x++) od[y * w + x] = 0;
+  const k1 = Math.max(3, Math.trunc(0.4 * ppm)), k2 = Math.max(3, Math.trunc(ppm)), K1 = cv.Mat.ones(k1, k1, cv.CV_8U), K2 = cv.Mat.ones(k2, k2, cv.CV_8U), K3 = cv.Mat.ones(5, 5, cv.CV_8U);
+  cv.morphologyEx(ogg, ogg, cv.MORPH_OPEN, K1); cv.morphologyEx(ogg, ogg, cv.MORPH_CLOSE, K2); cv.dilate(ogg, ogg, K3);
+  const lab = new cv.Mat(), st = new cv.Mat(), ce = new cv.Mat(), n = cv.connectedComponentsWithStats(ogg, lab, st, ce, 8, cv.CV_32S);
+  let out = null;
+  if (n >= 2) {
+    const gf = new cv.Mat(), gx = new cv.Mat(), gy = new cv.Mat(); g.convertTo(gf, cv.CV_32F);
+    cv.Sobel(gf, gx, cv.CV_32F, 1, 0); cv.Sobel(gf, gy, cv.CV_32F, 0, 1);
+    const X = gx.data32F, Y = gy.data32F, mag = new Float32Array(X.length); for (let i = 0; i < X.length; i++) mag[i] = Math.hypot(X[i], Y[i]);
+    const smp = []; for (let i = 0; i < mag.length; i += 7) smp.push(mag[i]); smp.sort((a, b) => a - b); const sog = smp[Math.floor(0.97 * (smp.length - 1))];
+    const L = lab.data32S, sc = new Float64Array(n);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (mag[i] > sog && L[i] > 0 && !(x >= ax0 && x < ax1 && y >= ay0 && y < ay1)) sc[L[i]]++; }
+    let b = 1; for (let i = 2; i < n; i++) if (sc[i] > sc[b]) b = i;
+    const bx = st.intAt(b, 0) + x0, by = st.intAt(b, 1) + y0, bw = st.intAt(b, 2), bh = st.intAt(b, 3);
+    out = [bx, by, bw, bh];
+    gf.delete(); gx.delete(); gy.delete();
+  }
+  g.delete(); ogg.delete(); K1.delete(); K2.delete(); K3.delete(); lab.delete(); st.delete(); ce.delete();
+  return out;
+}
+
+
+// ── campionamento e profili ────────────────────────────────────
+function campiona(F, x, y) {
+  if (x < 0 || y < 0 || x > F.w - 1 || y > F.h - 1) { x = Math.min(F.w - 1, Math.max(0, x)); y = Math.min(F.h - 1, Math.max(0, y)); }
+  const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(F.w - 1, x0 + 1), y1 = Math.min(F.h - 1, y0 + 1), fx = x - x0, fy = y - y0, d = F.data, W = F.w;
+  return (d[y0 * W + x0] * (1 - fx) + d[y0 * W + x1] * fx) * (1 - fy) + (d[y1 * W + x0] * (1 - fx) + d[y1 * W + x1] * fx) * fy;
+}
+function profilo(F, cx, cy, dx, dy, s0, s1, passo) { const out = []; for (let s = s0; s <= s1 + 1e-9; s += passo) out.push(campiona(F, cx + s * dx, cy + s * dy)); return out; }
+function gauss1d(y, sigma) { const r = Math.trunc(4 * sigma + 0.5), w = []; let S = 0;
+  for (let k = -r; k <= r; k++) { const v = Math.exp(-0.5 * (k / sigma) ** 2); w.push(v); S += v; }
+  const n = y.length, out = new Float64Array(n), rif = i => { while (i < 0 || i >= n) { if (i < 0) i = -i - 1; if (i >= n) i = 2 * n - i - 1; } return i; };
+  for (let i = 0; i < n; i++) { let a = 0; for (let k = -r; k <= r; k++) a += w[k + r] * y[rif(i + k)]; out[i] = a / S; } return out; }
+function gradiente(y) { const n = y.length, g = new Float64Array(n); for (let i = 1; i < n - 1; i++) g[i] = (y[i + 1] - y[i - 1]) / 2;
+  if (n > 1) { g[0] = y[1] - y[0]; g[n - 1] = y[n - 1] - y[n - 2]; } return g; }
+function subpixel(a, i) { if (i > 0 && i < a.length - 1) { const p = a[i - 1], q = a[i], r = a[i + 1], d = p - 2 * q + r;
+  if (d !== 0) return i + Math.max(-0.5, Math.min(0.5, 0.5 * (p - r) / d)); } return i; }
+function attraversa(ps, soglia, cl, verso) { let j = cl; while (j + verso >= 0 && j + verso < ps.length) { const k = j + verso;
+  if (ps[k] >= soglia) { const d = ps[k] - ps[j], t = d ? (soglia - ps[j]) / d : 0; return j + verso * Math.max(0, Math.min(1, t)); } j = k; } return null; }
+
+// larghezza della struttura al centro del profilo (fessura scura o ponte chiaro), bordi al gradiente massimo
+
+// aggancio al bordo piu' vicino: massimo del gradiente nel cerchio, poi sub-pixel lungo il gradiente
+function agganciaBordo(F, x, y, raggioPx) {
+  const r = Math.max(2, Math.round(raggioPx)); let best = null, bm = -1;
+  for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (i * i + j * j > r * r) continue;
+    const px = Math.round(x) + i, py = Math.round(y) + j; if (px < 2 || py < 2 || px > F.w - 3 || py > F.h - 3) continue;
+    const gx = (campiona(F, px + 1, py - 1) + 2 * campiona(F, px + 1, py) + campiona(F, px + 1, py + 1)) - (campiona(F, px - 1, py - 1) + 2 * campiona(F, px - 1, py) + campiona(F, px - 1, py + 1));
+    const gy = (campiona(F, px - 1, py + 1) + 2 * campiona(F, px, py + 1) + campiona(F, px + 1, py + 1)) - (campiona(F, px - 1, py - 1) + 2 * campiona(F, px, py - 1) + campiona(F, px + 1, py - 1));
+    const m = Math.hypot(gx, gy); if (m > bm) { bm = m; best = [px, py, gx / m, gy / m]; } }
+  if (!best || bm < 40) return { x, y, ok: false };
+  const passo = 0.25, L = 3, p = profilo(F, best[0], best[1], best[2], best[3], -L, L, passo);
+  const g = gradiente(gauss1d(p, 2)).map(Math.abs); let k = 0; for (let i = 0; i < g.length; i++) if (g[i] > g[k]) k = i;
+  const s = subpixel(g, k) * passo - L;
+  return { x: best[0] + s * best[2], y: best[1] + s * best[3], ok: true };
+}
+
+
+// punti di bordo lungo il percorso dei tocchi (raggi e raccordi). Si segue un solo tipo di bordo
+// (polarita' decisa dai tocchi): su un anello sottile non si salta al bordo del foro interno.
+function puntiBordoLungo(F, tocchi, bandaPx) {
+  const pts = [], passo = 0.25, segm = [];
+  for (let i = 0; i < tocchi.length - 1; i++) { const [x0, y0] = tocchi[i], [x1, y1] = tocchi[i + 1], Ls = Math.hypot(x1 - x0, y1 - y0);
+    if (Ls >= 1) segm.push([x0, y0, (x1 - x0) / Ls, (y1 - y0) / Ls, Ls]); }
+  if (!segm.length) return pts;
+  let somma = 0;
+  for (const [x0, y0, tx, ty, Ls] of segm) for (const [cx, cy] of [[x0, y0], [x0 + Ls * tx, y0 + Ls * ty]]) {
+    const g = gradiente(gauss1d(profilo(F, cx, cy, -ty, tx, -bandaPx, bandaPx, passo), 2)); let k = 0;
+    for (let j = 0; j < g.length; j++) if (Math.abs(g[j]) > Math.abs(g[k])) k = j; somma += g[k]; }
+  const pol = somma >= 0 ? 1 : -1;
+  for (const [x0, y0, tx, ty, Ls] of segm) { const nx = -ty, ny = tx;
+    for (let s = 0; s < Ls; s += 0.75) { const cx = x0 + s * tx, cy = y0 + s * ty;
+      const g = gradiente(gauss1d(profilo(F, cx, cy, nx, ny, -bandaPx, bandaPx, passo), 2)).map(v => v * pol);
+      let k = 0; for (let j = 0; j < g.length; j++) if (g[j] > g[k]) k = j;
+      if (k === 0 || k === g.length - 1 || g[k] < 2) continue;
+      const d = subpixel(g, k) * passo - bandaPx; pts.push([cx + d * nx, cy + d * ny]); } }
+  return pts;
+}
+
+
+function fitCerchio(ptsIn, iterazioni = 3, kMad = 3) {
+  let pts = ptsIn.slice(), c = null;
+  const base = P => { // Kasa + Gauss-Newton geometrico
+    let Sx = 0, Sy = 0, Sxx = 0, Syy = 0, Sxy = 0, Sxz = 0, Syz = 0, Sz = 0; const n = P.length;
+    for (const [x, y] of P) { const z = x * x + y * y; Sx += x; Sy += y; Sxx += x * x; Syy += y * y; Sxy += x * y; Sxz += x * z; Syz += y * z; Sz += z; }
+    const A = [[2 * Sxx, 2 * Sxy, Sx], [2 * Sxy, 2 * Syy, Sy], [2 * Sx, 2 * Sy, n]], b = [Sxz, Syz, Sz];
+    const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(A); if (!D) return null; const s = [0, 1, 2].map(j => det(A.map((r, i) => r.map((v, k) => k === j ? b[i] : v))) / D);
+    let xc = s[0], yc = s[1], r = Math.sqrt(s[2] + xc * xc + yc * yc);
+    for (let it = 0; it < 30; it++) { let JtJ = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], Jtr = [0, 0, 0];
+      for (const [x, y] of P) { const di = Math.hypot(x - xc, y - yc) || 1e-9, res = di - r, J = [-(x - xc) / di, -(y - yc) / di, -1];
+        for (let a = 0; a < 3; a++) { Jtr[a] += J[a] * res; for (let bb = 0; bb < 3; bb++) JtJ[a][bb] += J[a] * J[bb]; } }
+      const DD = det(JtJ); if (!DD) break; const step = [0, 1, 2].map(j => det(JtJ.map((rr, i) => rr.map((v, k) => k === j ? -Jtr[i] : v))) / DD);
+      xc += step[0]; yc += step[1]; r += step[2]; if (Math.hypot(...step) < 1e-7) break; }
+    const res = P.map(([x, y]) => Math.hypot(x - xc, y - yc) - r);
+    return { xc, yc, r, res, rms: Math.sqrt(res.reduce((s, v) => s + v * v, 0) / res.length) };
+  };
+  for (let k = 0; k < iterazioni; k++) { c = base(pts); if (!c) return null;
+    const md = mediana(c.res), mad = 1.4826 * mediana(c.res.map(v => Math.abs(v - md))), keep = pts.filter((_, i) => Math.abs(c.res[i]) <= Math.max(kMad * mad, 1e-9));
+    if (keep.length === pts.length || keep.length < 6) break; pts = keep; }
+  c = base(pts); if (!c) return null;
+  const ang = pts.map(([x, y]) => Math.atan2(y - c.yc, x - c.xc)).sort((a, b) => a - b); let gap = 0;
+  for (let i = 0; i < ang.length; i++) gap = Math.max(gap, (i < ang.length - 1 ? ang[i + 1] - ang[i] : ang[0] + 2 * Math.PI - ang[i]));
+  return { ...c, pts, n: pts.length, arco: (2 * Math.PI - gap) * 180 / Math.PI };
+}
+
+
+// foro o arco attorno a un centro: raggi in tutte le direzioni fino al primo bordo netto
+function cerchioDaCentro(F, x, y, maxMm = 6) {
+  const Rm = maxMm * F.R, pts = [];
+  for (let k = 0; k < 120; k++) { const a = 2 * Math.PI * k / 120, dx = Math.cos(a), dy = Math.sin(a);
+    // primo bordo: dove il grigio si allontana per meta' dal valore al centro, poi massimo del gradiente li' vicino
+    const ps = gauss1d(profilo(F, x, y, dx, dy, 0, Rm, 0.5), 2), p0 = ps[0], dev = ps.map(v => Math.abs(v - p0)), dm = Math.max(...dev);
+    if (dm < 15) continue;
+    let ic = -1; for (let i = 1; i < dev.length; i++) if (dev[i] >= 0.5 * dm) { ic = i; break; } if (ic < 0) continue;
+    const g = gradiente(ps).map(Math.abs), w = 6; let kk = Math.max(1, ic - w);
+    for (let i = Math.max(1, ic - w); i <= Math.min(g.length - 2, ic + w); i++) if (g[i] > g[kk]) kk = i;
+    const s = subpixel(g, kk) * 0.5; pts.push([x + s * dx, y + s * dy]); }
+  if (pts.length < 8) return null;
+  // affinamento: direzioni dal centro trovato (perpendicolari al bordo); su ognuna, tra i bordi con la
+  // polarità giusta (interno -> materiale), quello più vicino al cerchio precedente
+  let c = fitCerchio(pts, 6, 2.5);
+  for (let it = 0; it < 2 && c; it++) {
+    const xc = c.xc, yc = c.yc, r0 = c.r; if (!(r0 > 2 && r0 < Rm)) break;
+    const passo = 0.25, s0 = 0.4 * r0, s1 = Math.min(1.6 * r0, r0 + 0.8 * F.R + 6), nuovi = [];
+    for (let k = 0; k < 180; k++) { const a = 2 * Math.PI * k / 180, dx = Math.cos(a), dy = Math.sin(a);
+      const ps = gauss1d(profilo(F, xc, yc, dx, dy, s0, s1, passo), Math.max(1, 0.6 / passo)), sv = ps.map((_, i) => s0 + passo * i);
+      const den = ps.filter((_, i) => sv[i] < 0.75 * r0), fuo = ps.filter((_, i) => sv[i] > 1.25 * r0);
+      const dentro = den.length ? mediana(den) : ps[0], fuori = fuo.length ? mediana(fuo) : ps[ps.length - 1];
+      if (Math.abs(fuori - dentro) < 10) continue;
+      const sg = Math.sign(fuori - dentro), g = gradiente(ps).map(v => v * sg), gm = Math.max(...g); let kk = -1;
+      for (let i = 1; i < g.length - 1; i++) if (g[i] >= g[i - 1] && g[i] >= g[i + 1] && g[i] > 0.3 * gm && (kk < 0 || Math.abs(sv[i] - r0) < Math.abs(sv[kk] - r0))) kk = i;
+      if (kk < 0) continue;
+      const sk = s0 + subpixel(g, kk) * passo; nuovi.push([xc + sk * dx, yc + sk * dy]); }
+    if (nuovi.length < 12) break;
+    c = fitCerchio(nuovi, 6, 2.5);
+  }
+  return c;
+}
+
+
+// cerchi poco affidabili: scarto dei punti di bordo oltre il 3% del raggio, 20 µm e 0,6 pixel
+function qualita(r, raggioMm, pxMm) {
+  if (r.rms > Math.max(0.02, 0.03 * raggioMm, 0.6 * pxMm))
+    r.avviso = `misura dubbia: scarto ${Math.round(r.rms * 1000)} µm, bordo poco netto (riflessi, ombre o parete del foro visibile)`;
+  return r;
+}
+
+
+// ── utilità per immagini (Uint8Array / Float32Array <-> cv.Mat) ──
+function matU8(w, h, data) { const m = new cv.Mat(h, w, cv.CV_8U); m.data.set(data); return m; }
+function matF32(w, h, data) { const m = new cv.Mat(h, w, cv.CV_32F); m.data32F.set(data); return m; }
+function kern(n) { n = Math.max(3, Math.trunc(n)) | 1; return cv.Mat.ones(n, n, cv.CV_8U); }
+function morf(src, op, n) { const K = kern(n), out = new cv.Mat(); cv.morphologyEx(src, out, op, K); K.delete(); return out; }
+function sfoca(src, sigma) { const out = new cv.Mat(); cv.GaussianBlur(src, out, new cv.Size(0, 0), sigma, sigma, cv.BORDER_DEFAULT); return out; }
+function percentile(arr, p, passo = 1) { const s = []; for (let i = 0; i < arr.length; i += passo) s.push(arr[i]); s.sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(p / 100 * (s.length - 1)))] : 0; }
+function otsuValori(vals) { // soglia di Otsu su un elenco di valori 0-255
+  const h = new Float64Array(256); for (const v of vals) h[Math.max(0, Math.min(255, Math.round(v)))]++;
+  const n = vals.length; let sum = 0; for (let i = 0; i < 256; i++) sum += i * h[i];
+  let sB = 0, wB = 0, best = -1, t = 0;
+  for (let i = 0; i < 256; i++) { wB += h[i]; if (!wB) continue; const wF = n - wB; if (!wF) break; sB += i * h[i];
+    const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) ** 2; if (v > best) { best = v; t = i; } }
+  return t;
+}
+function magGradiente(mat32) { const gx = new cv.Mat(), gy = new cv.Mat(); cv.Sobel(mat32, gx, cv.CV_32F, 1, 0); cv.Sobel(mat32, gy, cv.CV_32F, 0, 1);
+  const X = gx.data32F, Y = gy.data32F, m = new Float32Array(X.length); for (let i = 0; i < X.length; i++) m[i] = Math.hypot(X[i], Y[i]);
+  const out = { mag: m, gx: Float32Array.from(X), gy: Float32Array.from(Y) }; gx.delete(); gy.delete(); return out; }
+function contorniEsterni(mask8) { const cs = new cv.MatVector(), hi = new cv.Mat(); cv.findContours(mask8, cs, hi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
+  const out = []; for (let i = 0; i < cs.size(); i++) { const c = cs.get(i); const d = c.data32S, P = []; for (let k = 0; k < d.length; k += 2) P.push([d[k], d[k + 1]]);
+    out.push({ P, area: cv.contourArea(c), per: cv.arcLength(c, true) }); c.delete(); } cs.delete(); hi.delete(); return out; }
+function riempi(mask8) { // riempie le sagome chiuse (contorni esterni)
+  const cs = new cv.MatVector(), hi = new cv.Mat(); cv.findContours(mask8, cs, hi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
+  const out = cv.Mat.zeros(mask8.rows, mask8.cols, cv.CV_8U); cv.drawContours(out, cs, -1, new cv.Scalar(1), -1); cs.delete(); hi.delete(); return out; }
+function componenti(mask8) { const lab = new cv.Mat(), st = new cv.Mat(), ce = new cv.Mat(); const n = cv.connectedComponentsWithStats(mask8, lab, st, ce, 8, cv.CV_32S);
+  const stat = []; for (let i = 0; i < n; i++) stat.push({ x: st.intAt(i, 0), y: st.intAt(i, 1), w: st.intAt(i, 2), h: st.intAt(i, 3), a: st.intAt(i, 4), cx: ce.doubleAt(i, 0), cy: ce.doubleAt(i, 1) });
+  const L = Int32Array.from(lab.data32S); lab.delete(); st.delete(); ce.delete(); return { n, L, stat }; }
+function migliorCentrale(comp, W, H, minArea = 0) { // macchia grande, vicina al centro, che non tocca il bordo
+  let best = -1, sc = -1;
+  for (let i = 1; i < comp.n; i++) { const s = comp.stat[i]; if (s.x <= 1 || s.y <= 1 || s.x + s.w >= W - 1 || s.y + s.h >= H - 1) continue;
+    const d = Math.hypot(s.x + s.w / 2 - W / 2, s.y + s.h / 2 - H / 2) / Math.max(W, H); if (s.a * (1 - d) > sc && s.a >= minArea) { sc = s.a * (1 - d); best = i; } }
+  return best;
+}
+function cornici(F, f = 1) { return (F.markerPx || []).map(q => { const cx = media(q.map(p => p[0])), cy = media(q.map(p => p[1]));
+  return q.map(([x, y]) => [(cx + (x - cx) * 1.4) * f, (cy + (y - cy) * 1.4) * f]); }); }
+function riempiPoligoni(mat8, polys, val) { for (const q of polys) { const pts = cv.matFromArray(q.length, 1, cv.CV_32SC2, q.flat().map(Math.round));
+  const mv = new cv.MatVector(); mv.push_back(pts); cv.fillPoly(mat8, mv, new cv.Scalar(val)); mv.delete(); pts.delete(); } }
+
+// ── riconoscimento del pezzo nella foto (finestra con margine) ──
+function trovaConBordi(gray, cal, raggioMm = 150) {
+  // pezzo = zona chiusa piu' grande delimitata da bordi netti, esclusa la scheda e cio' che tocca il bordo foto
+  const f = Math.min(1, 10 / cal.ppm), ppm = cal.ppm * f;
+  const small = new cv.Mat(); cv.resize(gray, small, new cv.Size(0, 0), f, f, cv.INTER_AREA);
+  const W = small.cols, H = small.rows, tutti = Object.values(cal.angoli).flat().map(p => [p[0] * f, p[1] * f]);
+  const cx = media(tutti.map(p => p[0])), cy = media(tutti.map(p => p[1])), R = Math.trunc(raggioMm * ppm);
+  const x0 = Math.max(0, Math.trunc(cx - R)), y0 = Math.max(0, Math.trunc(cy - R)), x1 = Math.min(W, Math.trunc(cx + R)), y1 = Math.min(H, Math.trunc(cy + R));
+  const roi = small.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0)), g32 = new cv.Mat(); roi.convertTo(g32, cv.CV_32F); roi.delete(); small.delete();
+  const gs = sfoca(g32, Math.max(1.5, 0.1 * ppm)); g32.delete(); const { mag } = magGradiente(gs); gs.delete();
+  const w = x1 - x0, h = y1 - y0, sog = percentile(mag, 96, 3), forte = new cv.Mat(h, w, cv.CV_8U), fd = forte.data;
+  const xs = tutti.map(p => p[0]), ys = tutti.map(p => p[1]), mg = ppm * 8;
+  const ax0 = Math.max(0, Math.trunc(Math.min(...xs) - mg - x0)), ay0 = Math.max(0, Math.trunc(Math.min(...ys) - mg - y0));
+  const ax1 = Math.min(w, Math.trunc(Math.max(...xs) + mg - x0)), ay1 = Math.min(h, Math.trunc(Math.max(...ys) + mg - y0));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; fd[i] = (mag[i] > sog && !(x >= ax0 && x < ax1 && y >= ay0 && y < ay1)) ? 1 : 0; }
+  const c1 = morf(forte, cv.MORPH_CLOSE, 1.5 * ppm); forte.delete(); const pieno = riempi(c1); c1.delete();
+  const o = morf(pieno, cv.MORPH_OPEN, 2.0 * ppm); pieno.delete();
+  const cs = contorniEsterni(o); o.delete(); let best = null, area = 0;
+  for (const c of cs) { const px = c.P.map(p => p[0]), py = c.P.map(p => p[1]); const bx = Math.min(...px), by = Math.min(...py), bw = Math.max(...px) - bx, bh = Math.max(...py) - by;
+    if ((bx <= 1 && x0 === 0) || (by <= 1 && y0 === 0) || (bx + bw >= w - 1 && x1 === W) || (by + bh >= h - 1 && y1 === H)) continue;
+    if (c.area > area) { area = c.area; best = [(bx + x0) / f, (by + y0) / f, bw / f, bh / f]; } }
+  if (!best || area / ppm ** 2 < 30) return null;
+  return best;
+}
+function trovaOggetto(gray, cal) {
+  let box = trovaConBordi(gray, cal); if (!box) box = trovaPerGrigio(gray, cal); if (!box) return null;
+  const [x, y, w, h] = box, c = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].map(p => applicaH(cal.H, p[0], p[1]));
+  const cxs = c.map(p => p[0]), cys = c.map(p => p[1]);
+  const m = Math.max(10, 0.3 * Math.max(Math.max(...cxs) - Math.min(...cxs), Math.max(...cys) - Math.min(...cys)));   // margine ampio
+  return [Math.min(...cxs) - m, Math.min(...cys) - m, Math.max(...cxs) + m, Math.max(...cys) + m];
+}
+
+function preparaFoto(gray, misuraL, misuraC, finestra, R, rot = null) {
+  const cal0 = calibra(gray, misuraL, misuraC); if (!cal0) return { errore: "Marker non trovati: servono almeno 2 dei 4 marker visibili." };
+  const cal = orienta(cal0, rot);
+  let fin = finestra || trovaOggetto(gray, cal);
+  if (!fin) { const W = gray.cols, Hh = gray.rows, c = [[0, 0], [W - 1, 0], [W - 1, Hh - 1], [0, Hh - 1]].map(p => applicaH(cal.H, p[0], p[1]));
+    const tutti = Object.values(cal.angoli).flat().map(p => applicaH(cal.H, p[0], p[1])), cx = media(tutti.map(p => p[0])), cy = media(tutti.map(p => p[1]));
+    fin = [Math.max(Math.min(...c.map(p => p[0])), cx - 250), Math.max(Math.min(...c.map(p => p[1])), cy - 250),
+           Math.min(Math.max(...c.map(p => p[0])), cx + 250), Math.min(Math.max(...c.map(p => p[1])), cy + 250)]; }
+  const wmm = fin[2] - fin[0], hmm = fin[3] - fin[1];
+  const ris = R || Math.min(cal.ppm, 4100 / Math.max(wmm, hmm));
+  const T = [ris, 0, -fin[0] * ris, 0, ris, -fin[1] * ris, 0, 0, 1], M = molt3(T, cal.H);
+  const w = Math.round(wmm * ris), h = Math.round(hmm * ris);
+  const Mm = cv.matFromArray(3, 3, cv.CV_64F, M), out = new cv.Mat();
+  cv.warpPerspective(gray, out, Mm, new cv.Size(w, h), cv.INTER_CUBIC, cv.BORDER_CONSTANT, new cv.Scalar(255));
+  const data = new Uint8Array(out.data); Mm.delete(); out.delete();
+  const markerPx = Object.values(cal.angoli).map(q => q.map(p => applicaH(M, p[0], p[1])));
+  return { w, h, data, R: ris, fin, rot: cal.rot, ppm: cal.ppm, nMarker: cal.nMarker, residuoMm: cal.residuoMm, markerPx };
+}
+
+function copiaRidotta(F, rmax = 12) {
+  const f = Math.min(1, rmax / F.R); if (f >= 0.999) return F;
+  const src = matU8(F.w, F.h, F.data), dst = new cv.Mat(); cv.resize(src, dst, new cv.Size(0, 0), f, f, cv.INTER_AREA);
+  const G = { w: dst.cols, h: dst.rows, data: new Uint8Array(dst.data), R: F.R * f, fin: F.fin, ppm: F.ppm, rot: F.rot,
+              markerPx: (F.markerPx || []).map(q => q.map(([x, y]) => [x * f, y * f])) };
+  src.delete(); dst.delete(); return G;
+}
+function liscia(F) { // immagine leggermente sfocata (cache)
+  if (!F.imgs) { const m = matU8(F.w, F.h, F.data), m32 = new cv.Mat(); m.convertTo(m32, cv.CV_32F); m.delete();
+    const s = sfoca(m32, Math.max(1.2, 0.05 * F.R)); m32.delete(); F.imgs = Float32Array.from(s.data32F); s.delete(); }
+  return F.imgs;
+}
+function campionaS(F, x, y) { const d = liscia(F), W = F.w;
+  x = Math.min(F.w - 1, Math.max(0, x)); y = Math.min(F.h - 1, Math.max(0, y));
+  const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(F.w - 1, x0 + 1), y1 = Math.min(F.h - 1, y0 + 1), fx = x - x0, fy = y - y0;
+  return (d[y0 * W + x0] * (1 - fx) + d[y0 * W + x1] * fx) * (1 - fy) + (d[y1 * W + x0] * (1 - fx) + d[y1 * W + x1] * fx) * fy; }
+
+// ── direzione prevalente dei bordi dritti / dei tagli rettilinei (per mettere la vista in squadra) ──
+function angoloDominante(F) {
+  try { const Fl = copiaRidotta(F), S = segmenta(Fl);
+    if (S) { const ap = matU8(Fl.w, Fl.h, S.aperture), kd = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(Math.max(3, Math.trunc(0.6 * Fl.R)) | 1, Math.max(3, Math.trunc(0.6 * Fl.R)) | 1));
+      const op = new cv.Mat(); cv.morphologyEx(ap, op, cv.MORPH_OPEN, kd); ap.delete(); kd.delete();
+      const C = componenti(op); op.delete(); const sx = new Float64Array(C.n), sy = new Float64Array(C.n), sxx = new Float64Array(C.n), syy = new Float64Array(C.n), sxy = new Float64Array(C.n), nn = new Float64Array(C.n);
+      for (let y = 0; y < Fl.h; y++) for (let x = 0; x < Fl.w; x++) { const l = C.L[y * Fl.w + x]; if (!l) continue; nn[l]++; sx[l] += x; sy[l] += y; sxx[l] += x * x; syy[l] += y * y; sxy[l] += x * y; }
+      const ang = [];
+      for (let i = 1; i < C.n; i++) { if (nn[i] < 30) continue; const mx = sx[i] / nn[i], my = sy[i] / nn[i];
+        const a = sxx[i] / nn[i] - mx * mx, b = sxy[i] / nn[i] - mx * my, c = syy[i] / nn[i] - my * my, tr = a + c, dt = Math.sqrt(((a - c) / 2) ** 2 + b * b);
+        const l1 = tr / 2 + dt, l2 = Math.max(tr / 2 - dt, 1e-9), lung = 4 * Math.sqrt(l1) / Fl.R, allung = Math.sqrt(l1 / l2);
+        if (lung > 10 && allung > 15) { const th = 0.5 * Math.atan2(2 * b, a - c) * 180 / Math.PI; ang.push(((th % 90) + 90) % 90); } }
+      if (ang.length >= 3) { const aa = ang.map(v => v > 45 ? v - 90 : v), md = mediana(aa), vic = aa.filter(v => Math.abs(v - md) < 1);
+        if (vic.length >= 3) return { angolo: mediana(vic), affid: 1 }; } } } catch (e) { }
+  // altrimenti: istogramma delle direzioni dei bordi forti (modulo 90°)
+  const m = matU8(F.w, F.h, F.data), m32 = new cv.Mat(); m.convertTo(m32, cv.CV_32F); m.delete(); const s = sfoca(m32, 1.5); m32.delete();
+  const { mag, gx, gy } = magGradiente(s); s.delete(); const sog = percentile(mag, 95, 5), h = new Float64Array(900);
+  for (let i = 0; i < mag.length; i++) if (mag[i] > sog) { let a = Math.atan2(gy[i], gx[i]) * 180 / Math.PI; a = ((a % 90) + 90) % 90; h[Math.min(899, Math.trunc(a * 10))] += mag[i] ** 2; }
+  const hs = new Float64Array(900); for (let i = 0; i < 900; i++) { let t = 0; for (let k = -7; k <= 7; k++) t += h[(i + k + 900) % 900]; hs[i] = t / 15; }
+  let k = 0; for (let i = 1; i < 900; i++) if (hs[i] > hs[k]) k = i; let tot = 0, vic = 0; for (let i = 0; i < 900; i++) tot += hs[i];
+  for (let d = -15; d <= 15; d++) vic += hs[(k + d + 900) % 900];
+  let a = (k + 0.5) / 10; if (a > 45) a -= 90; return { angolo: a, affid: vic / Math.max(tot, 1e-9) };
+}
+
+// ── diametro cliccando su uno spigolo circolare ──
+function normale(F, px, py) { const gx = (campionaS(F, px + 1, py - 1) + 2 * campionaS(F, px + 1, py) + campionaS(F, px + 1, py + 1)) - (campionaS(F, px - 1, py - 1) + 2 * campionaS(F, px - 1, py) + campionaS(F, px - 1, py + 1));
+  const gy = (campionaS(F, px - 1, py + 1) + 2 * campionaS(F, px, py + 1) + campionaS(F, px + 1, py + 1)) - (campionaS(F, px - 1, py - 1) + 2 * campionaS(F, px, py - 1) + campionaS(F, px + 1, py - 1));
+  return [gx, gy]; }
+function cerchioDaSpigolo(F, x, y, rMinMm = 0.25, rMaxMm = 15) {
+  const R = F.R; liscia(F);
+  const rc = Math.max(3, Math.round(0.4 * R)), xi = Math.round(x), yi = Math.round(y), cand = [], tab = [];
+  for (let j = -rc; j <= rc; j++) for (let i = -rc; i <= rc; i++) { if (i * i + j * j > rc * rc) continue; const px = xi + i, py = yi + j;
+    if (px < 3 || py < 3 || px > F.w - 4 || py > F.h - 4) continue; const [gx, gy] = normale(F, px, py); tab.push([Math.hypot(gx, gy), px, py, gx, gy]); }
+  if (!tab.length) return null; tab.sort((a, b) => b[0] - a[0]); const gmax = tab[0][0];
+  for (const t of tab) { if (cand.length >= 6 || t[0] < Math.max(20, 0.4 * gmax)) break;
+    if (cand.some(c => Math.abs(c[0] - t[1]) <= 2 && Math.abs(c[1] - t[2]) <= 2)) continue; cand.push([t[1], t[2], t[3] / t[0], t[4] / t[0]]); }
+  if (!cand.length) return null;
+  const NA = 120, ca = [], sa = []; for (let k = 0; k < NA; k++) { ca.push(Math.cos(2 * Math.PI * k / NA)); sa.push(Math.sin(2 * Math.PI * k / NA)); }
+  const d = Math.max(1, 0.12 * R); let migliore = [-Infinity, null];
+  for (const [px, py, nx, ny] of cand) for (const lato of [1, -1]) {
+    const a0 = Math.atan2(lato * ny, lato * nx), i0 = ((Math.round(((a0 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * NA)) % NA);
+    for (let r = rMinMm * R; r < rMaxMm * R; r += 0.5) {
+      const cx = px - lato * r * nx, cy = py - lato * r * ny, der = new Float64Array(NA); let somma = 0;
+      for (let k = 0; k < NA; k++) { const X = cx + r * ca[k], Y = cy + r * sa[k];
+        der[k] = lato * (campionaS(F, X + d * ca[k], Y + d * sa[k]) - campionaS(F, X - d * ca[k], Y - d * sa[k])); somma += Math.max(-40, Math.min(40, der[k])); }
+      const tau = Math.max(4, 0.35 * der[i0]); let av = 0, ind = 0;
+      for (let k = 0; k < NA; k++) { if (der[(i0 + k) % NA] >= tau) av++; else break; }
+      for (let k = 0; k < NA; k++) { if (der[(i0 - 1 - k + NA * 2) % NA] >= tau) ind++; else break; }
+      const tratto = Math.min(av + ind, NA), lung = tratto / NA * 2 * Math.PI * r;
+      const p = (tratto >= 15 ? lung : 0) + somma / NA / 100;
+      if (p > migliore[0]) migliore = [p, [cx, cy, r, lato]]; } }
+  if (!migliore[1] || migliore[0] < 1) return null;
+  const [xc, yc, r0, lato] = migliore[1], pts = [], passo = 0.25, w = Math.max(3, 0.15 * r0);
+  for (let k = 0; k < NA; k++) { const dx = ca[k], dy = sa[k], s0 = Math.max(0.5, r0 - w), ps = [];
+    for (let s = s0; s <= r0 + w + 1e-9; s += passo) ps.push(campionaS(F, xc + s * dx, yc + s * dy));
+    const g = gradiente(ps).map(v => v * lato); let kk = -1, bv = -Infinity;
+    for (let i = 1; i < g.length - 1; i++) if (g[i] >= g[i - 1] && g[i] >= g[i + 1] && g[i] > 2) { const v = g[i] * Math.exp(-(((s0 + i * passo - r0) / w) ** 2)); if (v > bv) { bv = v; kk = i; } }
+    if (kk < 0) continue; const sk = s0 + subpixel(g, kk) * passo; pts.push([xc + sk * dx, yc + sk * dy]); }
+  if (pts.length < 12) return null;
+  return fitCerchio(pts, 6, 2.5);
+}
+
+// ── larghezza di una struttura al centro di un profilo (scura o chiara, decisa da sola) ──
+function larghezzaProfiloAuto(prof, passo) {
+  let ps = gauss1d(prof, Math.max(1, 0.6 / passo)); const n = ps.length, c0 = Math.trunc(n / 2);
+  if (ps[c0] > mediana(ps)) ps = ps.map(v => -v);
+  const w = Math.max(2, Math.round(0.6 / passo)); let cl = c0 - w; for (let i = c0 - w; i <= c0 + w; i++) if (ps[i] < ps[cl]) cl = i;
+  let mxS = -Infinity, mxD = -Infinity, mn = Infinity, mxA = -Infinity; for (let i = 0; i < n; i++) { if (i <= cl) mxS = Math.max(mxS, ps[i]); if (i >= cl) mxD = Math.max(mxD, ps[i]); mn = Math.min(mn, ps[i]); mxA = Math.max(mxA, ps[i]); }
+  const vLat = Math.min(mxS, mxD), vCen = ps[cl], amp = mxA - mn;
+  if (vLat - vCen <= 0 || vLat - vCen < 0.25 * amp) return null;
+  const s95 = vCen + 0.95 * (vLat - vCen), lsx = attraversa(ps, s95, cl, -1), ldx = attraversa(ps, s95, cl, 1); if (lsx === null || ldx === null) return null;
+  const g = gradiente(ps), aS = Math.max(1, Math.floor(lsx) - 2), bD = Math.min(n - 1, Math.ceil(ldx) + 3); if (cl <= aS || bD <= cl + 1) return null;
+  let iS = aS; for (let i = aS; i < cl; i++) if (g[i] < g[iS]) iS = i; let iD = cl + 1; for (let i = cl + 1; i < bD; i++) if (g[i] > g[iD]) iD = i;
+  const sx = subpixel(g.map(v => -v), iS), dx = subpixel(g, iD);
+  return { w: (dx - sx) * passo, a: (sx - c0) * passo, b: (dx - c0) * passo };
+}
+function misuraFessura(F, m) {
+  const R = F.R, L = (0.75 * m.larg_mm + 0.4) * R, passo = 0.25, val = [], segm = [];
+  m.tocchi.forEach(([x, y], i) => { const [nx, ny] = m.normali[i], cx = (x - F.fin[0]) * R, cy = (y - F.fin[1]) * R;
+    const r = larghezzaProfiloAuto(profilo(F, cx, cy, nx, ny, -L, L, passo), passo); if (!r) return;
+    val.push(r.w / R); segm.push([[cx + r.a * nx, cy + r.a * ny], [cx + r.b * nx, cy + r.b * ny]]); });
+  if (val.length < 3) return { errore: "Bordi della fessura non trovati" };
+  const med = mediana(val), mu = media(val);
+  return { valore: med, media: mu, minimo: Math.min(...val), massimo: Math.max(...val), rms: stdCamp(val), n: val.length, unita: 'mm', geo: { segmenti: segm } };
+}
+
+// ── scheletro (Zhang-Suen) ──
+function assottiglia(mask, W, H) {
+  const img = new Uint8Array((W + 2) * (H + 2)), WW = W + 2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) img[(y + 1) * WW + x + 1] = mask[y * W + x] ? 1 : 0;
+  let cambiato = true; const togli = [];
+  while (cambiato) { cambiato = false;
+    for (let passo = 0; passo < 2; passo++) { togli.length = 0;
+      for (let y = 1; y <= H; y++) for (let x = 1; x <= W; x++) { const i = y * WW + x; if (!img[i]) continue;
+        const p2 = img[i - WW], p3 = img[i - WW + 1], p4 = img[i + 1], p5 = img[i + WW + 1], p6 = img[i + WW], p7 = img[i + WW - 1], p8 = img[i - 1], p9 = img[i - WW - 1];
+        const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9; if (B < 2 || B > 6) continue;
+        const s = [p2, p3, p4, p5, p6, p7, p8, p9, p2]; let A = 0; for (let k = 0; k < 8; k++) if (!s[k] && s[k + 1]) A++; if (A !== 1) continue;
+        if (passo === 0 ? (p2 * p4 * p6 === 0 && p4 * p6 * p8 === 0) : (p2 * p4 * p8 === 0 && p2 * p6 * p8 === 0)) togli.push(i); }
+      if (togli.length) { cambiato = true; for (const i of togli) img[i] = 0; } } }
+  const out = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) out[y * W + x] = img[(y + 1) * WW + x + 1]; return out;
+}
+
+// ── sagoma del pezzo e aperture interne ──
+function sagomaDaBordi(F, mag) {
+  const R = F.R, W = F.w, H = F.h, sog = percentile(mag, 90, 3), forte = new cv.Mat(H, W, cv.CV_8U), fd = forte.data;
+  for (let i = 0; i < mag.length; i++) fd[i] = mag[i] > sog ? 1 : 0;
+  riempiPoligoni(forte, cornici(F), 0);
+  const c1 = morf(forte, cv.MORPH_CLOSE, 0.5 * R); forte.delete(); const p = riempi(c1); c1.delete();
+  const o = morf(p, cv.MORPH_OPEN, 0.8 * R); p.delete(); const C = componenti(o); o.delete();
+  const b = migliorCentrale(C, W, H); if (b < 0 || C.stat[b].a / R ** 2 < 20) return null;
+  const out = new Uint8Array(W * H); for (let i = 0; i < out.length; i++) out[i] = C.L[i] === b ? 1 : 0; return out;
+}
+function sagomaGrabcut(F) {
+  const R = F.R, f = Math.min(1, 8 / R, Math.sqrt(2e5 / (F.w * F.h))), src = matU8(F.w, F.h, F.data), g = new cv.Mat();   // al massimo ~300 mila pixel
+  if (f < 1) cv.resize(src, g, new cv.Size(0, 0), f, f, cv.INTER_AREA); else src.copyTo(g); src.delete();
+  const Rr = R * f, W = g.cols, H = g.rows, gf = new cv.Mat(); g.convertTo(gf, cv.CV_32F);
+  const sq = new cv.Mat(); cv.multiply(gf, gf, sq); const m = sfoca(gf, Math.max(1, 0.15 * Rr)), m2 = sfoca(sq, Math.max(1, 0.15 * Rr)); sq.delete();
+  const sd = new cv.Mat(H, W, cv.CV_8U), gm8 = new cv.Mat(H, W, cv.CV_8U);
+  for (let i = 0; i < W * H; i++) sd.data[i] = Math.min(255, Math.sqrt(Math.max(m2.data32F[i] - m.data32F[i] ** 2, 0)) * 4);
+  const { mag } = magGradiente(gf); gf.delete(); m.delete(); m2.delete();
+  const magM = matF32(W, H, mag), magS = sfoca(magM, Math.max(1, 0.1 * Rr)); magM.delete();
+  for (let i = 0; i < W * H; i++) gm8.data[i] = Math.min(255, magS.data32F[i]); magS.delete();
+  const mv = new cv.MatVector(); mv.push_back(g); mv.push_back(sd); mv.push_back(gm8); const im3 = new cv.Mat(); cv.merge(mv, im3); mv.delete(); g.delete(); sd.delete(); gm8.delete();
+  const mx = Math.trunc(Math.min(0.12 * W, 6 * Rr)), my = Math.trunc(Math.min(0.12 * H, 6 * Rr));
+  const mask = new cv.Mat(), bgd = new cv.Mat(), fgd = new cv.Mat();
+  try { cv.grabCut(im3, mask, new cv.Rect(mx, my, W - 2 * mx, H - 2 * my), bgd, fgd, 3, cv.GC_INIT_WITH_RECT); }
+  catch (e) { im3.delete(); mask.delete(); bgd.delete(); fgd.delete(); return null; }
+  im3.delete(); bgd.delete(); fgd.delete();
+  const fg = new cv.Mat(H, W, cv.CV_8U); for (let i = 0; i < W * H; i++) fg.data[i] = (mask.data[i] === 1 || mask.data[i] === 3) ? 1 : 0; mask.delete();
+  const o = morf(fg, cv.MORPH_OPEN, 1.0 * Rr); fg.delete(); const C = componenti(o); o.delete();
+  const b = migliorCentrale(C, W, H); if (b < 0 || C.stat[b].a / Rr ** 2 < 20) return null;
+  const s8 = new cv.Mat(H, W, cv.CV_32F); for (let i = 0; i < W * H; i++) s8.data32F[i] = C.L[i] === b ? 1 : 0;
+  const big = new cv.Mat(); cv.resize(s8, big, new cv.Size(F.w, F.h), 0, 0, cv.INTER_LINEAR); s8.delete();
+  const out = new Uint8Array(F.w * F.h); for (let i = 0; i < out.length; i++) out[i] = big.data32F[i] > 0.5 ? 1 : 0; big.delete(); return out;
+}
+function segmenta(F) {
+  const R = F.R, W = F.w, H = F.h, N = W * H, src = matU8(W, H, F.data), imgM = sfoca(src, 1.0); src.delete();
+  const img = Uint8Array.from(imgM.data), chM = new cv.Mat(); cv.threshold(imgM, chM, 0, 1, cv.THRESH_BINARY + cv.THRESH_OTSU); imgM.delete();
+  const chiaro = Uint8Array.from(chM.data); chM.delete();
+  const b = Math.max(3, Math.trunc(2 * R)); let sb = 0, nb = 0; const bordoG = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (y < b || y >= H - b || x < b || x >= W - b) { sb += chiaro[y * W + x]; nb++; bordoG.push(img[y * W + x]); }
+  const sfondoChiaro = sb / nb >= 0.5;
+  let matM = new cv.Mat(H, W, cv.CV_8U); for (let i = 0; i < N; i++) matM.data[i] = (sfondoChiaro ? chiaro[i] === 0 : chiaro[i] === 1) ? 1 : 0;
+  let t = morf(matM, cv.MORPH_OPEN, 0.08 * R); matM.delete(); matM = t; const silM = morf(matM, cv.MORPH_CLOSE, 0.3 * R);
+  const C0 = componenti(silM); silM.delete(); let best = -1, sc = -1;
+  for (let i = 1; i < C0.n; i++) { const s = C0.stat[i], d = Math.hypot(s.x + s.w / 2 - W / 2, s.y + s.h / 2 - H / 2) / Math.max(W, H); if (s.a * (1 - d) > sc) { sc = s.a * (1 - d); best = i; } }
+  if (best < 0) { matM.delete(); return null; }
+  let sil = new Uint8Array(N); for (let i = 0; i < N; i++) sil[i] = C0.L[i] === best ? 1 : 0;
+  let mat = Uint8Array.from(matM.data); matM.delete();
+  // contrasto pezzo/sfondo
+  let sA = 0, sA2 = 0, nA = 0, sB = 0, sB2 = 0, nB = 0; for (let i = 0; i < N; i++) { const v = img[i]; if (chiaro[i]) { sB += v; sB2 += v * v; nB++; } else { sA += v; sA2 += v * v; nA++; } }
+  const mA = sA / Math.max(nA, 1), mB = sB / Math.max(nB, 1), dA = Math.sqrt(Math.max(sA2 / Math.max(nA, 1) - mA * mA, 0)), dB = Math.sqrt(Math.max(sB2 / Math.max(nB, 1) - mB * mB, 0));
+  const contrasto = (nA && nB) ? 1 - (dA + dB) / Math.max(1, mB - mA) : 0;
+  // ipotesi di sagoma: vince il contorno che corre sui bordi piu' netti
+  const f32 = new cv.Mat(); { const s = matU8(W, H, F.data); s.convertTo(f32, cv.CV_32F); s.delete(); }
+  const gl = sfoca(f32, 1.0); f32.delete(); const { mag } = magGradiente(gl); gl.delete();
+  const punteggio = sg => { const m8 = matU8(W, H, sg), cs = contorniEsterni(m8); m8.delete(); if (!cs.length) return -1;
+    const c = cs.reduce((a, q) => q.area > a.area ? q : a); if (c.area / R ** 2 < 20) return -1; let s = 0; for (const [x, y] of c.P) s += mag[y * W + x]; return s / c.P.length; };
+  const ipotesi = [['soglia', sil, mat]];
+  const hb = new Float64Array(256); for (const v of bordoG) hb[v]++; const hs = new Float64Array(256); for (let i = 0; i < 256; i++) { let s = 0; for (let k = -4; k <= 4; k++) if (i + k >= 0 && i + k < 256) s += hb[i + k]; hs[i] = s / 9; }
+  let fondo = 0; for (let i = 1; i < 256; i++) if (hs[i] > hs[fondo]) fondo = i;
+  const vic = bordoG.filter(v => Math.abs(v - fondo) < 20), sig = Math.max(5, stdCamp(vic));
+  for (const [nome, segno] of [['piu_chiaro', 1], ['piu_scuro', -1]]) {
+    const cm = new cv.Mat(H, W, cv.CV_8U); for (let i = 0; i < N; i++) cm.data[i] = (segno > 0 ? img[i] > fondo + Math.max(3 * sig, 15) : img[i] < fondo - Math.max(3 * sig, 15)) ? 1 : 0;
+    const mc = morf(cm, cv.MORPH_OPEN, 0.08 * R); cm.delete(); const scm = morf(mc, cv.MORPH_CLOSE, 0.3 * R); const C = componenti(scm); scm.delete();
+    const bb = migliorCentrale(C, W, H); if (bb >= 0) { const sg = new Uint8Array(N); for (let i = 0; i < N; i++) sg[i] = C.L[i] === bb ? 1 : 0; ipotesi.push([nome, sg, Uint8Array.from(mc.data)]); }
+    mc.delete(); }
+  const sbd = sagomaDaBordi(F, mag); if (sbd) ipotesi.push(['bordi', sbd, Uint8Array.from(sbd)]);
+  const pt = ipotesi.map(([, sg]) => punteggio(sg)); let k = 0; for (let i = 1; i < pt.length; i++) if (pt[i] > pt[k]) k = i;
+  let nomeSagoma = ipotesi[k][0]; sil = ipotesi[k][1]; mat = ipotesi[k][2];
+  if (contrasto < 0.75) { // caso difficile (metallo lucido, ombre, luce non uniforme): GrabCut
+    const sg = sagomaGrabcut(F);
+    if (sg) { nomeSagoma = 'grabcut'; sil = sg;
+      const fm = new cv.Mat(); { const s = matU8(W, H, F.data); s.convertTo(fm, cv.CV_32F); s.delete(); }
+      const sq = new cv.Mat(); cv.multiply(fm, fm, sq); const m1 = sfoca(fm, Math.max(1, 0.1 * R)), m2 = sfoca(sq, Math.max(1, 0.1 * R)); fm.delete(); sq.delete();
+      const mm_ = Float32Array.from(m1.data32F), sd_ = new Float32Array(N); for (let i = 0; i < N; i++) sd_[i] = Math.sqrt(Math.max(m2.data32F[i] - mm_[i] ** 2, 0)); m1.delete(); m2.delete();
+      const silM2 = matU8(W, H, sil), K1 = kern(2 * R), K2 = kern(0.6 * R), d1 = new cv.Mat(), d2 = new cv.Mat(); cv.dilate(silM2, d1, K1); cv.dilate(silM2, d2, K2); K1.delete(); K2.delete(); silM2.delete();
+      const fg_ = [], fs_ = []; for (let i = 0; i < N; i++) if (d1.data[i] && !sil[i] && !d2.data[i]) { fg_.push(mm_[i]); fs_.push(sd_[i]); } d1.delete(); d2.delete();
+      mat = Uint8Array.from(sil);
+      if (fg_.length > 50) { const bgG = mediana(fg_), bgS = mediana(fs_), sG = Math.max(5, 1.4826 * mediana(fg_.map(v => Math.abs(v - bgG)))), sS = Math.max(1, 1.4826 * mediana(fs_.map(v => Math.abs(v - bgS))));
+        const ss = new cv.Mat(H, W, cv.CV_8U); for (let i = 0; i < N; i++) ss.data[i] = (sil[i] && Math.abs(mm_[i] - bgG) / sG < 2.5 && Math.abs(sd_[i] - bgS) / sS < 2.5) ? 1 : 0;
+        const so = morf(ss, cv.MORPH_OPEN, 0.3 * R); ss.delete(); const C3 = componenti(so); so.delete();
+        for (let i = 1; i < C3.n; i++) { const st3 = C3.stat[i], a_ = st3.a; if (a_ / R ** 2 < 1) continue;   // solo zone >= 1 mm2
+          const w3 = st3.w + 2, h3 = st3.h + 2, ox = st3.x - 1, oy = st3.y - 1, comp = new cv.Mat(h3, w3, cv.CV_8U); comp.data.fill(0);
+          for (let y = 0; y < st3.h; y++) for (let x = 0; x < st3.w; x++) if (C3.L[(y + st3.y) * W + x + st3.x] === i) comp.data[(y + 1) * w3 + x + 1] = 1;
+          const cs3 = contorniEsterni(comp); comp.delete(); const per = cs3.length ? cs3[0].per : 0;
+          if (per > 0 && 4 * Math.PI * a_ / per ** 2 > 0.6) for (let y = 0; y < st3.h; y++) for (let x = 0; x < st3.w; x++) { const q = (y + st3.y) * W + x + st3.x; if (C3.L[q] === i) mat[q] = 0; } } } } }
+  const daBordi = nomeSagoma !== 'soglia';
+  const silM3 = matU8(W, H, sil), pienoM = riempi(silM3); silM3.delete(); const pieno = Uint8Array.from(pienoM.data);
+  const cont = contorniEsterni(pienoM); pienoM.delete(); if (!cont.length) return null;
+  const contorno = cont.reduce((a, q) => q.area > a.area ? q : a).P;
+  const ap = new Uint8Array(N); for (let i = 0; i < N; i++) ap[i] = (pieno[i] && !mat[i]) ? 1 : 0;
+  // fessure piu' scure del metallo (luce frontale): seconda classe di grigio dentro la sagoma
+  const dentro = []; for (let i = 0; i < N; i++) if (pieno[i] && mat[i]) dentro.push(img[i]);
+  if (dentro.length > 500) { const t2 = otsuValori(dentro); const lo = dentro.filter(v => v <= t2), hi = dentro.filter(v => v > t2);
+    if (lo.length && hi.length) { const piuScura = lo.length < hi.length, minor = piuScura ? lo : hi, major = piuScura ? hi : lo;
+      const separate = Math.abs(media(major) - media(minor)) > Math.max(30, 2.5 * (stdCamp(major) + stdCamp(minor)) / 2);
+      if (separate && minor.length < 0.4 * dentro.length) for (let i = 0; i < N; i++) if (pieno[i] && (piuScura ? img[i] <= t2 : img[i] > t2)) ap[i] = 1; } }
+  if (nomeSagoma === 'grabcut') { // fessure scure e strette con luce non uniforme: black-hat
+    const s0 = matU8(W, H, F.data), g1 = sfoca(s0, 1.0); s0.delete(); const bh = morf(g1, cv.MORPH_BLACKHAT, 2.5 * R); g1.delete();
+    const pm = matU8(W, H, pieno), K = kern(0.3 * R), er = new cv.Mat(); cv.erode(pm, er, K); pm.delete(); K.delete();
+    const v = []; for (let i = 0; i < N; i++) if (er.data[i]) v.push(bh.data[i]);
+    if (v.length > 500) { const t3 = otsuValori(v); if (t3 > 20) for (let i = 0; i < N; i++) if (er.data[i] && bh.data[i] > t3) ap[i] = 1; }
+    bh.delete(); er.delete(); }
+  const apM = matU8(W, H, ap), apO = morf(apM, cv.MORPH_OPEN, 0.08 * R); apM.delete(); const aperture = Uint8Array.from(apO.data); apO.delete();
+  return { pieno, aperture, contorno, contrasto, daBordi, sagoma: nomeSagoma };
+}
+
+// ── archi del contorno ──
+function kasa(P) { let Sx = 0, Sy = 0, Sxx = 0, Syy = 0, Sxy = 0, Sxz = 0, Syz = 0, Sz = 0; const n = P.length;
+  for (const [x, y] of P) { const z = x * x + y * y; Sx += x; Sy += y; Sxx += x * x; Syy += y * y; Sxy += x * y; Sxz += x * z; Syz += y * z; Sz += z; }
+  const A = [[2 * Sxx, 2 * Sxy, Sx], [2 * Sxy, 2 * Syy, Sy], [2 * Sx, 2 * Sy, n]], b = [Sxz, Syz, Sz];
+  const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const D = det(A); if (!D) return null; const s = [0, 1, 2].map(j => det(A.map((r, i) => r.map((v, k) => k === j ? b[i] : v))) / D);
+  const xc = s[0], yc = s[1], r2 = s[2] + xc * xc + yc * yc; if (r2 <= 0) return null; const r = Math.sqrt(r2);
+  let q = 0; for (const [x, y] of P) q += (Math.hypot(x - xc, y - yc) - r) ** 2; return [xc, yc, r, Math.sqrt(q / n)]; }
+function archiContorno(cont, R, rMaxMm = 30, arcoMin = 40) {
+  let c = cont.map(p => [p[0], p[1]]); const n = c.length; if (n < 50) return [];
+  { const m = cv.matFromArray(n, 1, cv.CV_32SC2, cont.flat()), ap = new cv.Mat(); cv.approxPolyDP(m, ap, 2.0, true);
+    const A = []; for (let i = 0; i < ap.rows; i++) A.push([ap.data32S[2 * i], ap.data32S[2 * i + 1]]); m.delete(); ap.delete();
+    if (A.length >= 2) { let q = 0, lm = -1; for (let i = 0; i < A.length; i++) { const l = Math.hypot(A[(i + 1) % A.length][0] - A[i][0], A[(i + 1) % A.length][1] - A[i][1]); if (l > lm) { lm = l; q = i; } }
+      const mid = [(A[q][0] + A[(q + 1) % A.length][0]) / 2, (A[q][1] + A[(q + 1) % A.length][1]) / 2]; let j = 0, dm = Infinity;
+      for (let i = 0; i < n; i++) { const d = Math.hypot(c[i][0] - mid[0], c[i][1] - mid[1]); if (d < dm) { dm = d; j = i; } } c = c.slice(j).concat(c.slice(0, j)); } }
+  const k0 = Math.max(8, Math.trunc(R)), passo = Math.max(2, Math.trunc(k0 / 4)), tol = 0.8, rmax = rMaxMm * R, usato = new Uint8Array(n), out = [];
+  const sel = (a, b) => { const P = []; for (let i = a; i < b; i++) P.push(c[((i % n) + n) % n]); return P; };
+  const anyUsato = (a, b) => { for (let i = a; i < b; i++) if (usato[((i % n) + n) % n]) return true; return false; };
+  const okFit = f => f && f[3] <= tol && f[2] <= rmax;
+  let i = 0;
+  while (i < n) { if (anyUsato(i, i + k0) || !okFit(kasa(sel(i, i + k0)))) { i += passo; continue; }
+    let a = i, b = i + k0;
+    while (b - a < n && !anyUsato(b, b + passo) && okFit(kasa(sel(a, b + passo)))) b += passo;
+    while (b - a < n && !anyUsato(a - passo, a) && okFit(kasa(sel(a - passo, b)))) a -= passo;
+    const P = sel(a, b), f = kasa(P); if (!f) { i += passo; continue; } const ang = P.map(([x, y]) => Math.atan2(y - f[1], x - f[0])); let tot = 0;
+    for (let q = 1; q < ang.length; q++) { let d = ang[q] - ang[q - 1]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; tot += d; }
+    const arco = Math.abs(tot) * 180 / Math.PI;
+    if (arco >= 15) { out.push(P); for (let q = a; q < b; q++) usato[((q % n) + n) % n] = 1; i = b; } else i += passo; }
+  const uniti = [];
+  for (const P of out) { const f = kasa(P); if (!f) continue; let ok = false;
+    for (let j = 0; j < uniti.length; j++) { const g = kasa(uniti[j]); if (g && Math.hypot(f[0] - g[0], f[1] - g[1]) < 0.15 * Math.max(f[2], g[2]) && Math.abs(f[2] / g[2] - 1) < 0.15) { uniti[j] = uniti[j].concat(P); ok = true; break; } }
+    if (!ok) uniti.push(P); }
+  const finali = [];
+  for (let P of uniti) { const f = kasa(P); if (!f) continue; const ang = P.map(([x, y]) => Math.atan2(y - f[1], x - f[0])), ord = ang.map((v, q) => [v, q]).sort((a, b) => a[0] - b[0]);
+    let gap = 0, gi = 0; for (let q = 0; q < ord.length; q++) { const d = (q < ord.length - 1 ? ord[q + 1][0] : ord[0][0] + 2 * Math.PI) - ord[q][0]; if (d > gap) { gap = d; gi = q; } }
+    const arco = (2 * Math.PI - gap) * 180 / Math.PI; if (arco < arcoMin) continue;
+    const a0 = ord[(gi + 1) % ord.length][0]; P = ord.map(([v, q]) => [((v - a0) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI), q]).sort((a, b) => a[0] - b[0]).map(([, q]) => P[q]);
+    const m = P.length, rif = kasa(P.slice(Math.trunc(0.25 * m), Math.trunc(0.75 * m) + 1)); let a_ = 0, b_ = m; if (!rif) continue;
+    for (const frac of [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]) { a_ = Math.trunc((1 - frac) / 2 * m); b_ = Math.trunc((1 + frac) / 2 * m); const f2 = kasa(P.slice(a_, b_)); if (f2 && f2[3] <= 1.15 * rif[3] + 0.05) break; }
+    finali.push(P.slice(a_, b_)); }
+  return finali;
+}
+
+// ── analisi automatica delle feature ──
+function griglia(P, cella) { const g = new Map(); P.forEach((p, i) => { const k = Math.floor(p[0] / cella) + ',' + Math.floor(p[1] / cella); if (!g.has(k)) g.set(k, []); g.get(k).push(i); }); return g; }
+function piuVicini(Pa, Pb, gb, cella) { let best = [Infinity, -1, -1];
+  Pa.forEach((p, ia) => { const cx = Math.floor(p[0] / cella), cy = Math.floor(p[1] / cella);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) { const l = gb.get((cx + dx) + ',' + (cy + dy)); if (!l) continue;
+      for (const ib of l) { const d = Math.hypot(p[0] - Pb[ib][0], p[1] - Pb[ib][1]); if (d < best[0]) best = [d, ia, ib]; } } });
+  return best; }
+function analisiAutomatica(Fp, forza = false) {
+  const F = copiaRidotta(Fp, 10), S = segmenta(F); if (!S) return { misure: [], errore: "Pezzo non riconosciuto" };
+  Fp.contrasto = S.contrasto;
+  if (S.contrasto < 0.6 && !forza && !S.daBordi) return { misure: [], errore: "contrasto", contrasto: S.contrasto };
+  const R = F.R, W = F.w, H = F.h, N = W * H, mm = p => [p[0] / R + F.fin[0], p[1] / R + F.fin[1]], misure = [], candidati = [], contorni = [];
+  const apM = matU8(W, H, S.aperture), C = componenti(apM); apM.delete();
+  for (let i = 1; i < C.n; i++) { const st = C.stat[i]; if (st.a / R ** 2 < 0.2) continue;
+    // tutto il lavoro sul singolo componente si fa nel suo riquadro (molto piu' veloce)
+    const ox = Math.max(0, st.x - 3), oy = Math.max(0, st.y - 3), w = Math.min(W, st.x + st.w + 3) - ox, h = Math.min(H, st.y + st.h + 3) - oy, n = w * h;
+    const mask = new Uint8Array(n); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) mask[y * w + x] = C.L[(y + oy) * W + x + ox] === i ? 1 : 0;
+    const mi = matU8(w, h, mask), cs = contorniEsterni(mi); if (!cs.length) { mi.delete(); continue; }
+    const c = cs.reduce((a, q) => q.area > a.area ? q : a), Pg = c.P.map(([x, y]) => [x + ox, y + oy]);
+    const circ = c.per > 0 ? 4 * Math.PI * c.area / c.per ** 2 : 0; const dtM = new cv.Mat(); cv.distanceTransform(mi, dtM, cv.DIST_L2, 5); const dt = Float32Array.from(dtM.data32F); dtM.delete(); mi.delete();
+    const gl = (x, y) => mm([x + ox, y + oy]);
+    if (circ > 0.8) { const mf = { tipo: 'foro', tocchi: [mm([st.cx, st.cy])], aggancia: true, auto: true }; const rf = calcola(F, mf);
+      if (rf && !rf.errore && !rf.avviso && rf.valore >= 0.5) { misure.push(mf); contorni.push(Pg); } continue; }
+    // fessure: solo i tratti stretti (< 2,5 mm) della linea centrale
+    const sk = assottiglia(mask, w, h); let nsk = 0; for (let q = 0; q < n; q++) { if (sk[q] && 2 * dt[q] >= 2.5 * R) sk[q] = 0; nsk += sk[q]; }
+    if (nsk < 3 * R) continue;
+    const incr = new cv.Mat(h, w, cv.CV_8U); incr.data.fill(0); let haIncr = false; const dts = [];
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const q = y * w + x; if (!sk[q]) continue; dts.push(dt[q]);
+      const s_ = [sk[q - w], sk[q - w + 1], sk[q + 1], sk[q + w + 1], sk[q + w], sk[q + w - 1], sk[q - 1], sk[q - w - 1]]; let A = 0; for (let k = 0; k < 8; k++) if (!s_[k] && s_[(k + 1) % 8]) A++;
+      if (A >= 3) { incr.data[q] = 1; haIncr = true; } }
+    const rami = matU8(w, h, sk);
+    if (haIncr) { const rr = Math.max(3, Math.trunc(2.5 * mediana(dts) + 2)), K = kern(2 * rr + 1), dl = new cv.Mat(); cv.dilate(incr, dl, K); K.delete();
+      for (let q = 0; q < n; q++) if (dl.data[q]) rami.data[q] = 0; dl.delete(); }
+    incr.delete(); const lab = new cv.Mat(), nr = cv.connectedComponents(rami, lab, 8, cv.CV_32S); const LR = Int32Array.from(lab.data32S); lab.delete(); rami.delete();
+    const pix = Array.from({ length: nr }, () => []); for (let q = 0; q < n; q++) if (LR[q] > 0) pix[LR[q]].push(q);
+    for (let j = 1; j < nr; j++) { const pj = pix[j]; if (pj.length < 3 * R) continue;
+      const punti = [], normali = [], occ = new Set();
+      for (const q of pj) { const x = q % w, y = Math.trunc(q / w), cella = Math.floor(x / (0.5 * R)) + ',' + Math.floor(y / (0.5 * R)); if (occ.has(cella)) continue;
+        const rr = Math.trunc(Math.max(3, 2 * dt[q])); const px = [], py = [];
+        for (let yy = Math.max(0, y - rr); yy <= Math.min(h - 1, y + rr); yy++) for (let xx = Math.max(0, x - rr); xx <= Math.min(w - 1, x + rr); xx++) if (LR[yy * w + xx] === j) { px.push(xx); py.push(yy); }
+        if (px.length < 4) continue; occ.add(cella);
+        const mx = media(px), my = media(py); let a = 0, b = 0, cc = 0; for (let k = 0; k < px.length; k++) { a += (px[k] - mx) ** 2; b += (px[k] - mx) * (py[k] - my); cc += (py[k] - my) ** 2; }
+        const th = 0.5 * Math.atan2(2 * b, a - cc), t = [Math.cos(th), Math.sin(th)]; punti.push(gl(x, y)); normali.push([-t[1], t[0]]); }
+      if (punti.length < 6) continue;
+      const larg = 2 * mediana(pj.map(q => dt[q])) / R, mf = { tipo: 'fessura', tocchi: punti, normali, larg_mm: larg, aggancia: false, auto: true }, rf = misuraFessura(F, mf);
+      if (!rf.errore && rf.rms <= Math.max(0.05, 0.15 * rf.valore)) candidati.push(mf); } }
+  // riunisco i tratti della stessa fessura (allineati, scostamento < meta' larghezza, distanza < 20 mm)
+  const asse = m => { const P = m.tocchi, mx = media(P.map(p => p[0])), my = media(P.map(p => p[1])); let a = 0, b = 0, c = 0;
+    for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; } const th = 0.5 * Math.atan2(2 * b, a - c); return [[mx, my], [Math.cos(th), Math.sin(th)], P]; };
+  const gr = candidati.map((_, i) => i), rad = i => { while (gr[i] !== i) i = gr[i]; return i; };
+  for (let a = 0; a < candidati.length; a++) { const [ca, da, Pa] = asse(candidati[a]);
+    for (let b = a + 1; b < candidati.length; b++) { const [cb, db, Pb] = asse(candidati[b]);
+      if (Math.abs(da[0] * db[0] + da[1] * db[1]) < Math.cos(10 * Math.PI / 180)) continue;
+      const lat = Math.abs(da[0] * (cb[1] - ca[1]) - da[1] * (cb[0] - ca[0])), tol = Math.max(0.3, 0.5 * candidati[a].larg_mm);
+      let gap = Infinity; for (const p of Pa) for (const q of Pb) gap = Math.min(gap, Math.hypot(p[0] - q[0], p[1] - q[1]));
+      if (lat < tol && gap < 20) gr[rad(b)] = rad(a); } }
+  const unite = new Map(); candidati.forEach((m, i) => { const r = rad(i); if (!unite.has(r)) unite.set(r, []); unite.get(r).push(m); });
+  const ordinati = [...unite.values()].sort((A, B) => { const ax = Math.round(media(A.flatMap(m => m.tocchi.map(t => t[0])))), bx = Math.round(media(B.flatMap(m => m.tocchi.map(t => t[0]))));
+    return ax !== bx ? ax - bx : media(A.flatMap(m => m.tocchi.map(t => t[1]))) - media(B.flatMap(m => m.tocchi.map(t => t[1]))); });
+  for (const g of ordinati) { const mf = { tipo: 'fessura', tocchi: g.flatMap(m => m.tocchi), normali: g.flatMap(m => m.normali), larg_mm: mediana(g.map(m => m.larg_mm)), aggancia: false, auto: true };
+    const rf = misuraFessura(F, mf); if (rf.errore) continue; misure.push(mf); contorni.push(rf.geo.segmenti.flat()); }
+  // ponti tra fori/fessure vicini (e tra questi e il contorno esterno)
+  const tutti = contorni.concat([S.contorno]), cella = 1.5 * R, griglie = tutti.map(P => griglia(P, cella));
+  for (let a = 0; a < contorni.length; a++) for (let b = a + 1; b < tutti.length; b++) {
+    const [d, ia, ib] = piuVicini(tutti[a], tutti[b], griglie[b], cella); if (!isFinite(d) || d / R > 1.5 || d / R < 0.1) continue;
+    misure.push({ tipo: 'ponte', tocchi: [mm(tutti[a][ia]), mm(tutti[b][ib])], aggancia: true, auto: true }); }
+  // ingombro lungo gli assi del rettangolo minimo
+  { const P = S.contorno, cm = cv.matFromArray(P.length, 1, cv.CV_32SC2, P.flat()), rr = cv.minAreaRect(cm); cm.delete();
+    for (const th of [rr.angle, rr.angle + 90].map(a => a * Math.PI / 180)) { const u = [Math.cos(th), Math.sin(th)], v = [-u[1], u[0]], pr = P.map(p => p[0] * u[0] + p[1] * u[1]);
+      const est = segno => { const ex = segno > 0 ? Math.max(...pr) : Math.min(...pr), sel = []; pr.forEach((x, i) => { if (segno * x >= segno * ex - 0.1 * R) sel.push(i); });
+        const q = sel.map(i => P[i][0] * v[0] + P[i][1] * v[1]), mq = mediana(q); let bi = 0; q.forEach((x, i) => { if (Math.abs(x - mq) < Math.abs(q[bi] - mq)) bi = i; }); return P[sel[bi]]; };
+      misure.push({ tipo: 'ingombro', tocchi: [mm(est(-1)), mm(est(1))], asse: u, aggancia: true, auto: true }); } }
+  // raggi del contorno esterno
+  for (const P of archiContorno(S.contorno, R)) { let L = 0; for (let q = 1; q < P.length; q++) L += Math.hypot(P[q][0] - P[q - 1][0], P[q][1] - P[q - 1][1]); if (L / R < 1.5) continue;
+    const sel = []; for (let q = 0; q < 6; q++) sel.push(P[Math.trunc(0.1 * (P.length - 1) + q * 0.8 * (P.length - 1) / 5)]);
+    misure.push({ tipo: 'raggio', tocchi: sel.map(mm), aggancia: true, auto: true }); }
+  return { misure, contrasto: S.contrasto };
+}
+
+// ── calcolo di una misura su una foto ──
+function calcola(F, m) {
+  const toPx = ([x, y]) => [(x - F.fin[0]) * F.R, (y - F.fin[1]) * F.R];
+  let T = m.tocchi.map(toPx); const rag = 0.35 * F.R, mm = px => px / F.R;
+  if (m.aggancia && ['distanza', 'angolo', 'raggio'].includes(m.tipo)) T = T.map(([x, y]) => { const s = agganciaBordo(F, x, y, rag); return [s.x, s.y]; });
+  if (m.tipo === 'distanza') { if (T.length < 2) return null; return { valore: mm(Math.hypot(T[1][0] - T[0][0], T[1][1] - T[0][1])), unita: 'mm', geo: { linea: [T[0], T[1]] } }; }
+  if (m.tipo === 'angolo') { if (T.length < 3) return null; const [a, v, b] = T;
+    const a1 = Math.atan2(a[1] - v[1], a[0] - v[0]), a2 = Math.atan2(b[1] - v[1], b[0] - v[0]); let d = Math.abs(a1 - a2) * 180 / Math.PI; if (d > 180) d = 360 - d;
+    return { valore: d, unita: '°', geo: { spezzata: [a, v, b] } }; }
+  if (m.tipo === 'raggio') { if (T.length < 3) return null; const pts = puntiBordoLungo(F, T, Math.max(4, 0.3 * F.R)); if (pts.length < 6) return { errore: "Arco non trovato" };
+    const c = fitCerchio(pts); if (!c) return { errore: "Arco non trovato" };
+    return qualita({ valore: mm(c.r), unita: 'mm', rms: mm(c.rms), arco: c.arco, n: c.n, geo: { cerchio: [c.xc, c.yc, c.r], punti: c.pts } }, mm(c.r), 1 / F.R); }
+  if (m.tipo === 'diametro') { const c = cerchioDaSpigolo(F, T[0][0], T[0][1]); if (!c) return { errore: "Spigolo non trovato: tocca più vicino al bordo" };
+    return qualita({ valore: 2 * mm(c.r), unita: 'mm', rms: mm(c.rms), arco: c.arco, n: c.n, geo: { cerchio: [c.xc, c.yc, c.r], punti: c.pts } }, mm(c.r), 1 / F.R); }
+  if (m.tipo === 'foro') { const c = cerchioDaCentro(F, T[0][0], T[0][1]); if (!c) return { errore: "Contorno non trovato" };
+    if (Math.hypot(c.xc - T[0][0], c.yc - T[0][1]) > c.r) return { errore: "Il punto non è dentro il foro" };
+    return qualita({ valore: 2 * mm(c.r), unita: 'mm', rms: mm(c.rms), n: c.n, geo: { cerchio: [c.xc, c.yc, c.r], punti: c.pts } }, mm(c.r), 1 / F.R); }
+  if (m.tipo === 'fessura') return misuraFessura(F, m);
+  if (m.tipo === 'ponte') { const [[ax, ay], [bx, by]] = T, d = Math.hypot(bx - ax, by - ay); if (d < 1) return { errore: "Ponte troppo stretto" };
+    const ux = (bx - ax) / d, uy = (by - ay) / d, cx = (ax + bx) / 2, cy = (ay + by) / 2, L = d / 2 + 0.6 * F.R, passo = 0.25;
+    const r = larghezzaProfiloAuto(profilo(F, cx, cy, ux, uy, -L, L, passo), passo); if (!r) return { errore: "Bordi del ponte non trovati" };
+    return { valore: mm(r.w), unita: 'mm', geo: { linea: [[cx + r.a * ux, cy + r.a * uy], [cx + r.b * ux, cy + r.b * uy]] } }; }
+  if (m.tipo === 'ingombro') { const u = m.asse, passo = 0.25, L = 0.6 * F.R, est = T.map(([px, py]) => {
+      const g = gradiente(gauss1d(profilo(F, px, py, u[0], u[1], -L, L, passo), 2)).map(Math.abs); let k = 0; for (let i = 0; i < g.length; i++) if (g[i] > g[k]) k = i;
+      const s = subpixel(g, k) * passo - L; return [px + s * u[0], py + s * u[1]]; });
+    const Lp = (est[1][0] - est[0][0]) * u[0] + (est[1][1] - est[0][1]) * u[1];
+    return { valore: mm(Math.abs(Lp)), unita: 'mm', geo: { linea: [est[0], [est[0][0] + Lp * u[0], est[0][1] + Lp * u[1]]] } }; }
+  return null;
+}
+
+return { preparaFoto, calcola, analisiAutomatica, angoloDominante, segmenta, copiaRidotta, media, stdCamp, mediana };
+}
+if (typeof module !== 'undefined' && module.exports) module.exports = creaLibero; else root.creaLibero = creaLibero;
+})(this);
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js"></script>
+<script>
+(function () {
+"use strict";
+const $ = s => document.querySelector(s);
+const num = s => { const v = parseFloat(String(s).replace(",", ".")); return Number.isFinite(v) ? v : NaN; };
+const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : v.toFixed(d).replace(".", ",");
+let cv = null, L = null;
+const foto = [];                     // {nome, lato, stato, msg, F, img}
+const misure = [];                   // {id, nome, tipo, lato, tocchi, aggancia, ..., coppia, ris: Map, storico}
+const cornice = { TOP: null, BOT: null };   // finestra, risoluzione e rotazione comuni per faccia
+let corrente = -1, strumento = "distanza", pendenti = [], saltate = new Set(), confermaAuto = false;
+const conta = { distanza: 0, raggio: 0, diametro: 0, foro: 0, angolo: 0, fessura: 0, ponte: 0, ingombro: 0 };
+const SIGLA = { distanza: "D", raggio: "R", diametro: "Ø", foro: "F", angolo: "A", fessura: "S", ponte: "P", ingombro: "G" };
+const NOME_TIPO = { distanza: "Distanza", raggio: "Raggio", diametro: "Diametro", foro: "Diametro foro", angolo: "Angolo",
+                    fessura: "Larghezza fessura", ponte: "Ponte (spessore minimo)", ingombro: "Ingombro" };
+const FAMIGLIA = { diametro: "diam", foro: "diam", fessura: "fessura", ponte: "ponte", distanza: "distanza", raggio: "raggio", ingombro: "ingombro" };
+const PUNTI = { distanza: 2, diametro: 1, angolo: 3, raggio: Infinity, elimina: 1 };
+const GUIDA = {
+  distanza: "Tocca due punti. Con l’aggancio attivo ogni punto si sposta sul bordo più vicino.",
+  raggio: "Tocca almeno 3 punti lungo l’arco o il raccordo, nell’ordine, poi «Fine arco».",
+  diametro: "Tocca uno spigolo circolare (bordo di un foro, cilindro, anello): il cerchio viene seguito da solo. Per i raccordi usa Raggio.",
+  angolo: "Tocca tre punti: il secondo è il vertice.",
+  elimina: "Tocca una misura sull’immagine per cancellarla (anche la × nella tabella)."
+};
+const COL = { distanza: "#2EC4F1", raggio: "#F0399A", diametro: "#7BE05A", foro: "#7BE05A", angolo: "#B48CFF", fessura: "#F5B700", ponte: "#FF8A3D", ingombro: "#E8E8E8" };
+
+// ── impostazioni ────────────────────────────────────────────
+try { const s = JSON.parse(localStorage.getItem("kerf-libero2") || "{}"); ["l", "c", "sp"].forEach(k => { if (s[k]) $("#i-" + k).value = s[k]; }); } catch (e) {}
+["#i-l", "#i-c", "#i-sp"].forEach(id => $(id).addEventListener("change", () => {
+  try { localStorage.setItem("kerf-libero2", JSON.stringify({ l: $("#i-l").value, c: $("#i-c").value, sp: $("#i-sp").value })); } catch (e) {}
+  aggiornaTabella();
+}));
+const spessore = () => { const v = num($("#i-sp").value); return v > 0 ? v : 0; };
+
+// ── avvio OpenCV ────────────────────────────────────────────
+function pronto(m) { cv = m; L = window.creaLibero(cv); const el = $("#stato-cv"); el.textContent = "Pronto. Le foto vengono analizzate sul telefono, nessun dato viene inviato."; el.className = "pronto"; }
+function attendi() { const g = window.cv;
+  if (!g) { const el = $("#stato-cv"); el.textContent = "Impossibile caricare il motore di analisi: controlla la connessione e ricarica la pagina."; el.className = "errore"; return; }
+  if (typeof g.then === "function") g.then(pronto); else if (g.Mat) pronto(g); else g.onRuntimeInitialized = () => pronto(g); }
+if (document.readyState === "complete") attendi(); else window.addEventListener("load", attendi);
+
+function messaggio(testo, tipo = "") { const el = $("#messaggio"); if (!testo) { el.style.display = "none"; return; }
+  el.style.display = ""; el.textContent = testo; el.style.color = tipo === "err" ? "var(--err)" : tipo === "warn" ? "var(--warn)" : ""; }
+const attesa = () => new Promise(r => setTimeout(r, 30));
+
+// ── foto ────────────────────────────────────────────────────
+async function leggiGrigio(file) {
+  const bmp = await createImageBitmap(file), c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+  const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+  const id = ctx.getImageData(0, 0, c.width, c.height); c.width = c.height = 1;
+  const rgba = cv.matFromImageData(id), g = new cv.Mat(); cv.cvtColor(rgba, g, cv.COLOR_RGBA2GRAY); rgba.delete(); return g;
+}
+function canvasDa(F) {
+  const c = document.createElement("canvas"); c.width = F.w; c.height = F.h;
+  const ctx = c.getContext("2d"), im = ctx.createImageData(F.w, F.h);
+  for (let i = 0, j = 0; i < F.data.length; i++, j += 4) { const v = F.data[i]; im.data[j] = im.data[j + 1] = im.data[j + 2] = v; im.data[j + 3] = 255; }
+  ctx.putImageData(im, 0, 0); return c;
+}
+function disegnaChips() {
+  const box = $("#lista-foto"); box.querySelectorAll(".foto-chip").forEach(b => b.remove());
+  const prima = box.querySelector("label.bottone");
+  foto.forEach((f, i) => { const b = document.createElement("button"); b.className = "foto-chip" + (i === corrente ? " attiva" : "");
+    b.innerHTML = `<span></span><span class="st ${f.stato}"></span>`; b.children[0].textContent = `${f.lato} · ${f.nome}`;
+    b.children[1].textContent = f.stato === "ok" ? "✓" : f.stato === "err" ? "✕" : "…";
+    b.title = f.msg || ""; b.addEventListener("click", () => { if (f.stato === "ok") { corrente = i; pendenti = []; disegnaChips(); adatta(); aggiornaTabella(); aggiornaProssima(); } else if (f.msg) alert(f.msg); });
+    box.insertBefore(b, prima); });
+  $("#b-svuota").disabled = !foto.length;
+  $("#b-auto").disabled = !(foto[corrente] && foto[corrente].F);
+}
+async function aggiungiFoto(files, lato) {
+  if (!L) { alert("Il motore di analisi non è ancora pronto: attendi qualche secondo."); return; }
+  const ml = num($("#i-l").value), mc = num($("#i-c").value);
+  if (!(ml > 0 && mc > 0)) { alert("Inserisci le misure della scheda marker."); return; }
+  files = Array.from(files || []).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  for (const file of files) {
+    const v = { nome: file.name, lato, stato: "attesa", msg: "Analisi in corso", F: null, img: null }; foto.push(v); disegnaChips();
+    messaggio(`Analisi di ${file.name} (${lato})…`); await attesa();
+    let g = null;
+    try {
+      g = await leggiGrigio(file);
+      const cr = cornice[lato]; let F;
+      if (!cr) {
+        F = L.preparaFoto(g, ml, mc, null, null, null);
+        if (!F.errore) { const a = L.angoloDominante(F);   // vista in squadra sul pezzo (tagli, lati dritti)
+          if (Math.abs(a.angolo) > 0.2 && a.affid > 0.15) { const F2 = L.preparaFoto(g, ml, mc, null, null, F.rot - a.angolo); if (!F2.errore) F = F2; } }
+      } else F = L.preparaFoto(g, ml, mc, cr.fin, cr.R, cr.rot);
+      if (F.errore) { v.stato = "err"; v.msg = F.errore; }
+      else {
+        if (!cornice[lato]) cornice[lato] = { fin: F.fin, R: F.R, rot: F.rot };
+        v.F = F; v.stato = "ok"; v.msg = `Scala ${fmt(F.ppm, 2)} px/mm, ${F.nMarker}/4 marker, residuo ${fmt(F.residuoMm * 1000, 0)} µm`;
+        if (corrente < 0 || !foto[corrente].F) { corrente = foto.indexOf(v); requestAnimationFrame(adatta); }
+        const idx = foto.indexOf(v); misure.forEach(m => { if (m.lato === lato && !m.daSessione) m.ris.set(idx, L.calcola(F, m)); });
+        if (F.ppm < 20) $("#avviso-foto").innerHTML = `<div class="avviso">Risoluzione bassa (${fmt(F.ppm, 1)} px/mm): per fessure e ponti sotto 1 mm avvicina il telefono, in modo che pezzo e scheda riempiano l’inquadratura.</div>`;
+      }
+    } catch (err) { v.stato = "err"; v.msg = "Errore durante l’analisi: " + (err && err.message ? err.message : err); }
+    finally { if (g) g.delete(); }
+    disegnaChips(); disegna(); aggiornaTabella(); aggiornaProssima();
+  }
+  messaggio("");
+}
+$("#f-top").addEventListener("change", e => { const f = e.target.files; aggiungiFoto(f, "TOP").then(() => { e.target.value = ""; }); });
+$("#f-bot").addEventListener("change", e => { const f = e.target.files; aggiungiFoto(f, "BOT").then(() => { e.target.value = ""; }); });
+$("#b-svuota").addEventListener("click", () => {
+  if (misure.length && !confirm("Svuotare le foto? Anche le misure verranno eliminate.")) return;
+  foto.length = 0; misure.length = 0; corrente = -1; cornice.TOP = cornice.BOT = null; pendenti = []; saltate = new Set();
+  Object.keys(conta).forEach(k => conta[k] = 0); $("#avviso-foto").innerHTML = ""; messaggio("");
+  disegnaChips(); disegna(); aggiornaTabella(); aggiornaPulsanti(); aggiornaProssima();
+});
+
+// ── strumenti ───────────────────────────────────────────────
+document.querySelectorAll(".strumenti button").forEach(b => b.addEventListener("click", () => {
+  strumento = b.dataset.t; pendenti = [];
+  document.querySelectorAll(".strumenti button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+  aggiornaPulsanti(); disegna();
+}));
+function aggiornaPulsanti() {
+  $("#suggerimento").textContent = GUIDA[strumento] + (pendenti.length ? `  Punti: ${pendenti.length}.` : "");
+  $("#b-annulla").disabled = !pendenti.length; $("#b-fine").disabled = !(strumento === "raggio" && pendenti.length >= 3);
+  $("#b-fine").style.display = strumento === "raggio" ? "" : "none";
+}
+aggiornaPulsanti();
+$("#b-annulla").addEventListener("click", () => { pendenti.pop(); aggiornaPulsanti(); disegna(); });
+$("#b-fine").addEventListener("click", () => chiudiMisura());
+
+const lato = () => foto[corrente] ? foto[corrente].lato : "TOP";
+function calcolaTutte(m) { foto.forEach((f, i) => { if (f.stato === "ok" && f.lato === m.lato) m.ris.set(i, L.calcola(f.F, m)); }); }
+function prossimaTop(tipo) {   // prima misura TOP non ancora abbinata (stessa famiglia, se indicata)
+  const abbinate = new Set(misure.filter(m => m.lato === "BOT" && m.coppia).map(m => m.coppia));
+  return misure.find(m => m.lato === "TOP" && FAMIGLIA[m.tipo] && !abbinate.has(m.nome) && !saltate.has(m.nome) && (!tipo || FAMIGLIA[tipo] === FAMIGLIA[m.tipo])) || null;
+}
+function nuova(m, abbina = true) {
+  m.lato = lato(); m.ris = new Map(); m.id = Date.now() + Math.random();
+  if (abbina && m.lato === "BOT") { const p = prossimaTop(m.tipo); if (p) { m.coppia = p.nome; m.nome = p.nome + "'"; } }
+  if (!m.nome) { conta[m.tipo]++; m.nome = SIGLA[m.tipo] + conta[m.tipo] + (m.lato === "BOT" ? "'" : ""); }
+  calcolaTutte(m); misure.push(m); return m;
+}
+function aggiungiPunto(xpx, ypx) {
+  const F = foto[corrente] && foto[corrente].F; if (!F) return;
+  if (strumento === "elimina") { eliminaVicina(xpx, ypx); return; }
+  pendenti.push([xpx / F.R + F.fin[0], ypx / F.R + F.fin[1]]);
+  if (pendenti.length >= PUNTI[strumento]) chiudiMisura(); else { aggiornaPulsanti(); disegna(); }
+}
+function chiudiMisura() {
+  if (!pendenti.length) return;
+  const m = { nome: "", tipo: strumento, tocchi: pendenti.slice(), aggancia: $("#c-aggancia").checked };
+  const r0 = L.calcola(foto[corrente].F, m);
+  if (strumento === "diametro" && (!r0 || r0.errore || r0.avviso)) {   // niente cerchi a caso
+    pendenti = []; aggiornaPulsanti(); disegna();
+    messaggio("Diametro non misurato: in quel punto lo spigolo non è netto (riflesso, ombra o graffio). Tocca un altro tratto dello stesso spigolo, dove il bordo si vede bene.", "warn"); return; }
+  nuova(m); pendenti = []; aggiornaPulsanti(); disegna(); aggiornaTabella(); aggiornaProssima();
+  const r = m.ris.get(corrente);
+  if (r && r.errore) messaggio(`${m.nome}: ${r.errore}. Prova a toccare più vicino al bordo o in un punto più nitido.`, "warn");
+  else if (m.coppia) { const q = pareti().find(q => q.nome === m.coppia); messaggio(q && q.ang !== null ? `${m.coppia}: TOP ${fmt(q.top)} · BOT ${fmt(q.bot)} mm → angolo pareti ${q.ang >= 0 ? "+" : ""}${fmt(q.ang)}°` : `${m.nome} abbinata a ${m.coppia} (TOP).`); }
+  else messaggio("");
+}
+function aggiornaProssima() {
+  const el = $("#prossima"), f = foto[corrente];
+  if (!f || f.lato !== "BOT") { el.style.display = "none"; return; }
+  const p = prossimaTop(); if (!p) { el.style.display = "none"; return; }
+  const st = statistiche(p); el.style.display = "";
+  el.innerHTML = `<b>Prossima da misurare sul BOT:</b> <span></span> <button class="secondario" id="b-salta" style="margin-left:8px;padding:4px 9px">Salta</button>`;
+  el.children[1].textContent = `${p.nome} (${NOME_TIPO[p.tipo]}, TOP ${fmt(st.mu)} mm) — misura la stessa feature su questa faccia.`;
+  $("#b-salta").addEventListener("click", () => { saltate.add(p.nome); aggiornaProssima(); });
+}
+
+// ── analisi automatica ─────────────────────────────────────
+$("#b-auto").addEventListener("click", async () => {
+  const f = foto[corrente]; if (!f || !f.F) return;
+  $("#b-auto").disabled = true; messaggio("Analisi automatica in corso… (alcuni secondi)"); await attesa();
+  let A; try { A = L.analisiAutomatica(f.F, confermaAuto); } catch (e) { A = { misure: [], errore: "errore imprevisto: " + (e && e.message ? e.message : e) }; }
+  const forzata = confermaAuto; confermaAuto = false; $("#b-auto").disabled = false;
+  if (A.errore === "contrasto") { confermaAuto = true;
+    messaggio(`Contrasto pezzo/sfondo basso (${fmt(A.contrasto)}): con riflessi e ombre molte feature potrebbero mancare o essere sbagliate. Premi di nuovo «Analisi automatica» per eseguirla comunque. Meglio: fondo nero opaco o retroilluminazione.`, "warn"); return; }
+  if (A.errore) { messaggio("Analisi automatica non eseguita: " + A.errore, "err"); return; }
+  let scartate = 0; const conteggio = {};
+  for (const m of A.misure) {
+    const r0 = L.calcola(f.F, m);
+    if (!r0 || r0.errore || r0.avviso) { scartate++; continue; }
+    if (m.tipo === "raggio" && !(r0.valore >= 0.5 && r0.valore <= 30 && (r0.arco || 0) >= 40)) { scartate++; continue; }
+    if (m.tipo === "foro" && r0.valore < 0.5) { scartate++; continue; }
+    m.nome = ""; nuova(m, false); conteggio[m.tipo] = (conteggio[m.tipo] || 0) + 1;
+  }
+  const trovate = Object.entries(conteggio).map(([k, v]) => `${v} ${NOME_TIPO[k].toLowerCase()}`).join(", ");
+  messaggio(`Analisi automatica (faccia ${f.lato}): ${trovate || "nessuna feature riconosciuta"}.` + (scartate ? ` ${scartate} scartate (bordo non netto).` : "") +
+    ((A.contrasto || 1) < 0.75 ? " Contrasto basso: controlla i risultati." : "") + (f.lato === "BOT" ? " Sul BOT le feature automatiche non vengono abbinate al TOP: per l’angolo delle pareti misura a tocco le stesse feature." : "") +
+    " Togli quelle inutili con «Elimina» o con la ×.", (A.contrasto || 1) < 0.75 ? "warn" : "");
+  disegna(); aggiornaTabella(); aggiornaProssima();
+});
+
+// ── eliminazione con un tocco ───────────────────────────────
+function distMisura(m, x, y) {
+  const f = foto[corrente], F = f.F; if (m.lato !== f.lato || m.daSessione) return Infinity;
+  const r = m.ris.get(corrente), seg = (p, q) => { const dx = q[0] - p[0], dy = q[1] - p[1], L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, ((x - p[0]) * dx + (y - p[1]) * dy) / L2)) : 0; return Math.hypot(p[0] + t * dx - x, p[1] + t * dy - y); };
+  if (!r || r.errore) return Math.min(...m.tocchi.map(([tx, ty]) => Math.hypot((tx - F.fin[0]) * F.R - x, (ty - F.fin[1]) * F.R - y)));
+  const g = r.geo;
+  if (g.segmenti) return Math.min(...g.segmenti.map(([a, b]) => seg(a, b)));
+  if (g.linea) return seg(g.linea[0], g.linea[1]);
+  if (g.spezzata) return Math.min(seg(g.spezzata[0], g.spezzata[1]), seg(g.spezzata[1], g.spezzata[2]));
+  if (g.cerchio) { const [cx, cy, rr] = g.cerchio; const d = Math.hypot(x - cx, y - cy); return Math.min(Math.abs(d - rr), d); }
+  return Infinity;
+}
+function eliminaVicina(x, y) {
+  if (!misure.length) return; let k = -1, dm = Infinity; misure.forEach((m, i) => { const d = distMisura(m, x, y); if (d < dm) { dm = d; k = i; } });
+  if (k < 0 || dm > 18 / scala) { messaggio("Nessuna misura vicina al tocco: zooma e riprova.", "warn"); return; }
+  const m = misure.splice(k, 1)[0]; messaggio(`Eliminata ${m.nome} (${NOME_TIPO[m.tipo]}, ${m.lato}).`); disegna(); aggiornaTabella(); aggiornaProssima();
+}
+
+// ── visualizzatore con zoom e spostamento ───────────────────
+const tela = $("#vista"), ctx = tela.getContext("2d");
+let scala = 1, tx = 0, ty = 0;
+function dimensiona() { const r = tela.getBoundingClientRect(), d = window.devicePixelRatio || 1; tela.width = Math.round(r.width * d); tela.height = Math.round(r.height * d); disegna(); }
+window.addEventListener("resize", dimensiona);
+function adatta() { const f = foto[corrente]; if (!f || !f.F) { disegna(); return; } const r = tela.getBoundingClientRect();
+  scala = Math.min(r.width / f.F.w, r.height / f.F.h); tx = (r.width - f.F.w * scala) / 2; ty = (r.height - f.F.h * scala) / 2; disegna(); }
+function zoomIn(fattore, cx, cy) { const nuovaS = Math.min(60, Math.max(0.05, scala * fattore)); tx = cx - (cx - tx) * nuovaS / scala; ty = cy - (cy - ty) * nuovaS / scala; scala = nuovaS; disegna(); }
+$("#z-piu").addEventListener("click", () => { const r = tela.getBoundingClientRect(); zoomIn(1.6, r.width / 2, r.height / 2); });
+$("#z-meno").addEventListener("click", () => { const r = tela.getBoundingClientRect(); zoomIn(1 / 1.6, r.width / 2, r.height / 2); });
+$("#z-adatta").addEventListener("click", adatta);
+tela.addEventListener("wheel", e => { e.preventDefault(); const r = tela.getBoundingClientRect(); zoomIn(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+const puntatori = new Map(); let gesto = null;
+tela.addEventListener("pointerdown", e => { tela.setPointerCapture(e.pointerId); puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (puntatori.size === 1) gesto = { x0: e.clientX, y0: e.clientY, t0: performance.now(), mosso: false, multi: false };
+  else if (gesto) gesto.multi = true; });
+tela.addEventListener("pointermove", e => {
+  if (!puntatori.has(e.pointerId)) return; const prima = [...puntatori.values()].map(p => ({ ...p })); puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const r = tela.getBoundingClientRect(), dopo = [...puntatori.values()];
+  if (dopo.length === 1) { const dx = dopo[0].x - prima[0].x, dy = dopo[0].y - prima[0].y;
+    if (gesto && Math.hypot(e.clientX - gesto.x0, e.clientY - gesto.y0) > 6) gesto.mosso = true;
+    if (gesto && gesto.mosso) { tx += dx; ty += dy; disegna(); } }
+  else if (dopo.length === 2 && prima.length === 2) {
+    const d0 = Math.hypot(prima[0].x - prima[1].x, prima[0].y - prima[1].y), d1 = Math.hypot(dopo[0].x - dopo[1].x, dopo[0].y - dopo[1].y);
+    const c0 = { x: (prima[0].x + prima[1].x) / 2 - r.left, y: (prima[0].y + prima[1].y) / 2 - r.top }, c1 = { x: (dopo[0].x + dopo[1].x) / 2 - r.left, y: (dopo[0].y + dopo[1].y) / 2 - r.top };
+    tx += c1.x - c0.x; ty += c1.y - c0.y; if (d0 > 0) zoomIn(d1 / d0, c1.x, c1.y); else disegna(); }
+});
+function fine(e) { if (!puntatori.has(e.pointerId)) return; puntatori.delete(e.pointerId);
+  if (puntatori.size === 0 && gesto) { const tap = !gesto.mosso && !gesto.multi && performance.now() - gesto.t0 < 600; gesto = null;
+    if (tap && e.type === "pointerup") { const r = tela.getBoundingClientRect(); aggiungiPunto((e.clientX - r.left - tx) / scala, (e.clientY - r.top - ty) / scala); } } }
+tela.addEventListener("pointerup", fine); tela.addEventListener("pointercancel", fine);
+
+function disegna() {
+  const d = window.devicePixelRatio || 1; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, tela.width, tela.height);
+  const f = foto[corrente]; $("#vista-vuota").style.display = f && f.F ? "none" : "grid";
+  const bf = $("#faccia"); if (f && f.F) { bf.style.display = ""; bf.textContent = "Faccia " + f.lato; } else bf.style.display = "none";
+  if (!f || !f.F) return;
+  if (!f.img) { foto.forEach(x => { x.img = null; }); f.img = canvasDa(f.F); }   // un solo canvas in memoria
+  ctx.setTransform(d * scala, 0, 0, d * scala, d * tx, d * ty); ctx.imageSmoothingEnabled = scala < 3; ctx.drawImage(f.img, 0, 0);
+  const lw = 1.6 / scala, F = f.F, P = ([x, y]) => [(x - F.fin[0]) * F.R, (y - F.fin[1]) * F.R];
+  const etichetta = (x, y, testo, col) => { ctx.save(); ctx.setTransform(d, 0, 0, d, 0, 0); const sx = tx + x * scala, sy = ty + y * scala;
+    ctx.font = "600 13px Barlow, sans-serif"; const w = ctx.measureText(testo).width + 8; ctx.fillStyle = "rgba(10,12,14,0.78)"; ctx.fillRect(sx + 6, sy - 20, w, 18);
+    ctx.fillStyle = col; ctx.fillText(testo, sx + 10, sy - 6); ctx.restore(); };
+  for (const m of misure) {
+    if (m.lato !== f.lato || m.daSessione) continue;
+    const r = m.ris.get(corrente), col = COL[m.tipo]; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
+    if (!r || r.errore) { const [x, y] = P(m.tocchi[0]); etichetta(x, y, `${m.nome}: non misurabile`, "#F07A6E"); continue; }
+    const g = r.geo, val = `${m.nome} ${fmt(r.valore, 2)}${r.unita === "°" ? "°" : " mm"}${r.avviso ? " (dubbia)" : ""}`;
+    if (g.segmenti) { g.segmenti.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }); const s0 = g.segmenti[0][1]; etichetta(s0[0], s0[1], val, col); }
+    if (g.linea) { const [a, b] = g.linea; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      [a, b].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 2.5 / scala, 0, 7); ctx.fill(); }); etichetta((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, val, col); }
+    if (g.spezzata) { const s = g.spezzata; ctx.beginPath(); ctx.moveTo(s[0][0], s[0][1]); ctx.lineTo(s[1][0], s[1][1]); ctx.lineTo(s[2][0], s[2][1]); ctx.stroke(); etichetta(s[1][0], s[1][1], val, col); }
+    if (g.cerchio) { const [cx, cy, rr] = g.cerchio; ctx.save(); ctx.setLineDash([6 / scala, 4 / scala]); ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 7); ctx.stroke(); ctx.restore();
+      (g.punti || []).forEach(p => { ctx.fillRect(p[0] - 1 / scala, p[1] - 1 / scala, 2 / scala, 2 / scala); });
+      ctx.beginPath(); ctx.moveTo(cx - 4 / scala, cy); ctx.lineTo(cx + 4 / scala, cy); ctx.moveTo(cx, cy - 4 / scala); ctx.lineTo(cx, cy + 4 / scala); ctx.stroke();
+      const pe = g.punti && g.punti.length ? g.punti[Math.floor(g.punti.length / 2)] : [cx, cy - rr]; etichetta(pe[0], pe[1], val, col); }
+  }
+  ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = lw;
+  pendenti.forEach((t, i) => { const [x, y] = P(t), s = 7 / scala; ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
+    if (i > 0) { const [px, py] = P(pendenti[i - 1]); ctx.save(); ctx.setLineDash([4 / scala, 4 / scala]); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke(); ctx.restore(); } });
+}
+requestAnimationFrame(dimensiona);
+
+// ── statistiche, pareti, tabella ────────────────────────────
+function statistiche(m) {
+  let v = []; foto.forEach((f, i) => { const r = m.ris.get(i); if (f.stato === "ok" && f.lato === m.lato && r && !r.errore) v.push(r.valore); });
+  if (!v.length && m.storico && m.storico.valori) v = m.storico.valori.slice();
+  const n = v.length, mu = n ? L.media(v) : null, s = n > 1 ? L.stdCamp(v) : null; return { n, mu, s, uA: s !== null ? s / Math.sqrt(n) : null, v };
+}
+function pareti() {
+  const t = spessore(), out = [];
+  for (const b of misure) { if (b.lato !== "BOT" || !b.coppia) continue;
+    const a = misure.find(m => m.lato === "TOP" && m.nome === b.coppia); if (!a) continue;
+    const sa = statistiche(a), sb = statistiche(b); if (sa.mu === null || sb.mu === null) continue;
+    let ang = null, u = null;
+    if (t > 0) { const div = a.tipo === "raggio" ? t : 2 * t;   // raggio: un lato; larghezze e diametri: due lati
+      ang = Math.atan((sa.mu - sb.mu) / div) * 180 / Math.PI; u = Math.sqrt((sa.uA || 0) ** 2 + (sb.uA || 0) ** 2) / div * 180 / Math.PI; }
+    out.push({ nome: a.nome, tipo: a.tipo, top: sa.mu, bot: sb.mu, ang, u, nt: sa.n, nb: sb.n }); }
+  return out;
+}
+function dettaglio(m, r) {
+  if (!r) return m.daSessione ? "dalla sessione salvata" : "";
+  if (r.errore) return r.errore; if (r.avviso) return r.avviso;
+  if (m.tipo === "raggio") return `Ø ${fmt(2 * r.valore)} mm · arco ${fmt(r.arco, 0)}° · rms ${fmt(r.rms * 1000, 0)} µm`;
+  if (m.tipo === "diametro" || m.tipo === "foro") return `R ${fmt(r.valore / 2)} mm · rms ${fmt(r.rms * 1000, 0)} µm`;
+  if (m.tipo === "fessura") return `lungo il taglio (${r.n}): mediana ${fmt(r.valore, 3)}, media ${fmt(r.media, 3)}, min ${fmt(r.minimo, 3)}, max ${fmt(r.massimo, 3)}`;
+  return "";
+}
+function aggiornaTabella() {
+  const box = $("#misure"); $("#b-csv").disabled = $("#b-json").disabled = !misure.length;
+  if (!misure.length) { box.innerHTML = `<p class="nota" style="margin:0">Nessuna misura.</p>`; $("#pareti").innerHTML = ""; return; }
+  let h = `<div class="tabella"><table><thead><tr><th>Misura</th><th>Faccia</th><th>Tipo</th><th>Foto attuale</th><th>Media</th><th>Std</th><th>u_A</th><th>N</th><th>Dettaglio</th><th></th></tr></thead><tbody>`;
+  misure.forEach((m, k) => { const r = foto[corrente] && foto[corrente].lato === m.lato ? m.ris.get(corrente) : null, st = statistiche(m), u = m.tipo === "angolo" ? "°" : " mm";
+    h += `<tr><td></td><td>${m.lato}</td><td>${NOME_TIPO[m.tipo]}</td><td class="forte">${r && !r.errore ? fmt(r.valore) + u : "—"}</td>
+      <td>${fmt(st.mu)}</td><td>${fmt(st.s, 3)}</td><td>${fmt(st.uA, 3)}</td><td>${st.n}</td><td style="text-align:left;white-space:normal;min-width:180px"></td>
+      <td><button class="elimina" data-k="${k}" aria-label="Elimina">×</button></td></tr>`; });
+  box.innerHTML = h + `</tbody></table></div><p class="nota">Media, deviazione standard e incertezza tipo A (s/√N) sulle foto della stessa faccia.</p>`;
+  box.querySelectorAll("tbody tr").forEach((tr, k) => { const m = misure[k], r = foto[corrente] && foto[corrente].lato === m.lato ? m.ris.get(corrente) : null;
+    tr.children[0].textContent = m.nome + (m.coppia ? ` (= ${m.coppia})` : ""); tr.children[8].textContent = dettaglio(m, r);
+    if (r && r.avviso) tr.children[8].style.color = "var(--warn)"; });
+  box.querySelectorAll("button.elimina").forEach(b => b.addEventListener("click", () => { misure.splice(+b.dataset.k, 1); disegna(); aggiornaTabella(); aggiornaProssima(); }));
+  const par = pareti(), pb = $("#pareti");
+  if (!par.length) { pb.innerHTML = ""; return; }
+  let ph = `<h3 style="font-size:16px;margin:16px 0 6px">Angolo delle pareti ${spessore() ? `(spessore ${fmt(spessore())} mm)` : ""}</h3>`;
+  if (!spessore()) ph += `<p class="nota" style="margin:0 0 6px">Inserisci lo spessore del pezzo al punto 1 per calcolare l’angolo.</p>`;
+  ph += `<div class="tabella"><table><thead><tr><th>Feature</th><th>Tipo</th><th>TOP</th><th>BOT</th><th>Angolo</th><th>u_A</th><th>Correzione testa</th></tr></thead><tbody>`;
+  par.forEach(q => { ph += `<tr><td>${q.nome}</td><td>${NOME_TIPO[q.tipo]}</td><td>${fmt(q.top)} mm</td><td>${fmt(q.bot)} mm</td><td class="forte">${q.ang === null ? "—" : (q.ang >= 0 ? "+" : "") + fmt(q.ang) + "°"}</td><td>${q.u === null ? "—" : fmt(q.u) + "°"}</td><td>${q.ang === null ? "—" : (q.ang <= 0 ? "+" : "−") + fmt(Math.abs(q.ang)) + "°"}</td></tr>`; });
+  pb.innerHTML = ph + `</tbody></table></div><p class="nota">Larghezze e diametri: angolo = arctan((TOP − BOT) / (2 · spessore)); raggi: arctan((TOP − BOT) / spessore).</p>`;
+}
+
+// ── salvataggi ──────────────────────────────────────────────
+const c = (v, d = 4) => (v === null || v === undefined || Number.isNaN(v)) ? "" : v.toFixed(d).replace(".", ",");
+function csv() {
+  const righe = [["Misura", "Faccia", "Tipo", "Unità", "Foto", "File", "Valore (mediana per le fessure)", "Scarto rms fit / std lungo il taglio (mm)", "Arco (°)", "Punti / sezioni", "Media lungo il taglio", "Min", "Max", "Abbinata a (TOP)", "Note"]];
+  misure.forEach(m => foto.forEach((f, i) => { if (f.stato !== "ok" || f.lato !== m.lato || m.daSessione) return; const r = m.ris.get(i) || {};
+    righe.push([m.nome, m.lato, NOME_TIPO[m.tipo], m.tipo === "angolo" ? "°" : "mm", i + 1, f.nome, r.errore ? "" : c(r.valore), c(r.rms), c(r.arco, 1), r.n ?? "", c(r.media), c(r.minimo), c(r.massimo), m.coppia || "", r.errore || r.avviso || ""]); }));
+  righe.push([]); righe.push(["Riepilogo", "Faccia", "Tipo", "Unità", "N foto", "Media", "Std", "u_A", "Abbinata a (TOP)"]);
+  misure.forEach(m => { const s = statistiche(m); righe.push([m.nome, m.lato, NOME_TIPO[m.tipo], m.tipo === "angolo" ? "°" : "mm", s.n, c(s.mu), c(s.s), c(s.uA), m.coppia || ""]); });
+  const par = pareti();
+  if (par.length) { righe.push([]); righe.push(["Pareti", "Tipo", "TOP media (mm)", "BOT media (mm)", "Angolo pareti (°)", "u_A angolo (°)", "Correzione testa (°)", "N TOP", "N BOT", "Spessore (mm)"]);
+    par.forEach(q => righe.push([q.nome, NOME_TIPO[q.tipo], c(q.top), c(q.bot), c(q.ang, 3), c(q.u, 3), q.ang === null ? "" : c(-q.ang, 3), q.nt, q.nb, c(spessore(), 2)])); }
+  righe.push([]); righe.push(["Scheda lato lungo (mm)", c(num($("#i-l").value), 2)]); righe.push(["Scheda lato corto (mm)", c(num($("#i-c").value), 2)]);
+  return righe.map(r => r.join(";")).join("\r\n");
+}
+function sessione() {
+  return JSON.stringify({ spessore: spessore(), L: num($("#i-l").value), C: num($("#i-c").value), saltate: [...saltate],
+    misure: misure.map(m => { const s = statistiche(m), d = {}; ["nome", "tipo", "lato", "coppia", "tocchi", "aggancia", "normali", "larg_mm", "asse"].forEach(k => { if (m[k] !== undefined) d[k] = m[k]; });
+      d.storico = { valori: s.v, file: m.daSessione ? ((m.storico || {}).file || []) : foto.filter(f => f.lato === m.lato && f.stato === "ok").map(f => f.nome) }; return d; }) }, null, 1);
+}
+async function salva(nome, testo, tipoMime) {
+  const data = new TextEncoder().encode(testo);
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch (e) {}
+  if (dl) { try { await dl.save({ filename: nome, data }); return; } catch (e) { if (e && e.code === "declined") return; } }
+  try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: tipoMime })); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {}
+  $("#csv-fallback").innerHTML = `<div class="avviso">Se il file non è stato salvato, copia il testo e incollalo in un file <b></b>.</div><textarea id="csv-copia" readonly></textarea>`;
+  $("#csv-fallback b").textContent = nome; $("#csv-copia").value = testo;
+}
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+$("#b-csv").addEventListener("click", () => salva(`kerf_misure_${stamp()}.csv`, "\uFEFF" + csv(), "text/csv"));
+$("#b-json").addEventListener("click", () => salva(`kerf_sessione_${stamp()}.json`, sessione(), "application/json"));
+$("#f-sessione").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { const ses = JSON.parse(await f.text());
+    if (ses.spessore && !spessore()) $("#i-sp").value = String(ses.spessore).replace(".", ",");
+    let n = 0;
+    for (const d of ses.misure || []) { const m = { ...d, ris: new Map(), id: Date.now() + Math.random(), daSessione: true }; misure.push(m); n++;
+      const base = String(m.nome).replace(/'$/, ""); for (const [k, s] of Object.entries(SIGLA)) if (base.startsWith(s) && /^\d+$/.test(base.slice(s.length))) conta[k] = Math.max(conta[k], +base.slice(s.length)); }
+    (ses.saltate || []).forEach(x => saltate.add(x));
+    $("#info-sessione").textContent = `Sessione caricata: ${n} misure (riferimento per l’abbinamento TOP/BOT).`;
+    aggiornaTabella(); aggiornaProssima();
+  } catch (err) { alert("File di sessione non valido."); }
+});
+window.__kerf = { aggiungiPunto, chiudiMisura, stato: () => ({ foto, misure, corrente, cornice }), pareti };
+})();
+</script>
+</body>
+</html>
