@@ -89,7 +89,7 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
     <p>Calibro ottico su foto con marker — facce superiore e inferiore, angolo delle pareti</p>
   </header>
   <p id="stato-cv">Caricamento del motore di analisi…</p>
-  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 16</p>
+  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 16:30</p>
 
   <section class="passo">
     <h2>Modalità</h2>
@@ -1294,9 +1294,9 @@ function csvProvino() {
 }
 
 // ── strumenti ───────────────────────────────────────────────
-document.querySelectorAll(".strumenti button").forEach(b => b.addEventListener("click", () => {
+document.querySelectorAll("#gruppo-strumenti button").forEach(b => b.addEventListener("click", () => {
   strumento = b.dataset.t; pendenti = [];
-  document.querySelectorAll(".strumenti button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+  document.querySelectorAll("#gruppo-strumenti button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
   aggiornaPulsanti(); disegna();
 }));
 function aggiornaPulsanti() {
