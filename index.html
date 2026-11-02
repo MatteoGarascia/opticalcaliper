@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kerf — misura libera</title>
+<title>Kerf — calibro ottico su foto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -75,8 +75,11 @@ td.forte { font-weight: 600; }
 .nota { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
 .avviso { background: var(--soft); border-radius: var(--radius-s); padding: 9px 11px; font-size: 15px; margin-top: 10px; }
 textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; margin-top: 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-s); }
+.gruppo-foto { border: 1px solid var(--line); border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; }
+.titolo-gruppo { font-weight: 600; font-size: 15px; margin-bottom: 8px; }
 .badge-faccia { position: absolute; left: 8px; top: 8px; background: rgba(20,24,28,0.78); color: #fff; font-size: 13px; font-weight: 600; padding: 4px 9px; border-radius: 6px; pointer-events: none; }
 #prossima b { font-weight: 600; }
+.strumenti.modi { grid-template-columns: repeat(2, 1fr); }
 </style>
 </head>
 <body>
@@ -86,6 +89,16 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
     <p>Calibro ottico su foto con marker — facce superiore e inferiore, angolo delle pareti</p>
   </header>
   <p id="stato-cv">Caricamento del motore di analisi…</p>
+  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 15</p>
+
+  <section class="passo">
+    <h2>Modalità</h2>
+    <div class="strumenti modi" role="group" aria-label="Modalità">
+      <button data-modo="provino" aria-pressed="true">Provino a pettine</button>
+      <button data-modo="libera" aria-pressed="false">Misura libera</button>
+    </div>
+    <p class="guida" id="guida-modo" style="margin:8px 0 0"></p>
+  </section>
 
   <section class="passo">
     <h2>1 · Scheda marker e pezzo</h2>
@@ -93,9 +106,14 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
     <div class="campi">
       <label class="campo">Scheda, lato lungo (mm)<input id="i-l" type="text" inputmode="decimal" value="60"></label>
       <label class="campo">Scheda, lato corto (mm)<input id="i-c" type="text" inputmode="decimal" value="40"></label>
-      <label class="campo">Spessore pezzo (mm)<input id="i-sp" type="text" inputmode="decimal" placeholder="es. 1,5"></label>
+      <label class="campo">Spessore pezzo (mm)<input id="i-sp" type="text" inputmode="decimal" placeholder="es. 10"></label>
     </div>
-    <div class="azioni" style="margin-top:12px">
+    <div class="campi solo-provino" style="margin-top:12px">
+      <label class="campo">Numero di tagli<input id="i-n" type="text" inputmode="numeric" value="9"></label>
+      <label class="campo" style="grid-column: span 2">Velocità dei tagli, facoltative (per raggruppare i risultati)<input id="i-vel" type="text" placeholder="es. 76,49; 232,99; 389,49"></label>
+    </div>
+    <label class="solo-provino" style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="c-inverti"> Sul BOT i tagli sono in ordine inverso (provino ribaltato)</label>
+    <div class="azioni solo-libera" style="margin-top:12px">
       <label class="bottone secondario"><input type="file" id="f-sessione" accept=".json,application/json">Riprendi sessione salvata</label>
       <span id="info-sessione" class="nota" style="margin:0"></span>
     </div>
@@ -103,25 +121,32 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
 
   <section class="passo">
     <h2>2 · Foto</h2>
-    <p class="guida">Più foto per faccia, senza spostare pezzo e scheda tra gli scatti. Per la faccia inferiore gira il pezzo e rifai le foto.</p>
-    <div class="azioni" id="lista-foto">
-      <label class="bottone"><input type="file" id="f-top" accept="image/*" multiple>+ Foto TOP</label>
-      <label class="bottone"><input type="file" id="f-bot" accept="image/*" multiple>+ Foto BOT</label>
-      <button class="secondario" id="b-svuota" disabled>Svuota</button>
+    <p class="guida">Più foto per faccia (per il provino ne bastano 5), senza spostare pezzo e scheda tra gli scatti. Per la faccia inferiore (uscita getto) gira il pezzo e rifai le foto.</p>
+    <div class="gruppo-foto">
+      <div class="titolo-gruppo">Faccia TOP · ingresso getto <span id="n-top" class="nota" style="margin:0"></span></div>
+      <div class="azioni" id="lista-top"><label class="bottone"><input type="file" id="f-top" accept="image/*" multiple>+ Foto TOP</label></div>
     </div>
+    <div class="gruppo-foto">
+      <div class="titolo-gruppo">Faccia BOT · uscita getto <span id="n-bot" class="nota" style="margin:0"></span></div>
+      <div class="azioni" id="lista-bot"><label class="bottone"><input type="file" id="f-bot" accept="image/*" multiple>+ Foto BOT</label></div>
+    </div>
+    <div class="azioni" style="margin-top:10px"><button class="secondario" id="b-svuota" disabled>Svuota tutto</button></div>
     <div id="avviso-foto"></div>
   </section>
 
   <section class="passo">
     <h2>3 · Misura</h2>
-    <div class="strumenti" role="group" aria-label="Strumento">
+    <div class="solo-provino">
+      <div class="riga-strumenti"><button class="secondario" id="b-provino" disabled>Rianalizza</button><span id="avanzamento" class="nota" style="margin:0"></span></div>
+    </div>
+    <div class="strumenti solo-libera" id="gruppo-strumenti" role="group" aria-label="Strumento">
       <button data-t="distanza" aria-pressed="true">Distanza</button>
       <button data-t="raggio" aria-pressed="false">Raggio</button>
       <button data-t="diametro" aria-pressed="false">Diametro</button>
       <button data-t="angolo" aria-pressed="false">Angolo</button>
       <button data-t="elimina" aria-pressed="false">Elimina</button>
     </div>
-    <div class="riga-strumenti">
+    <div class="riga-strumenti solo-libera">
       <label><input type="checkbox" id="c-aggancia" checked> Aggancia al bordo</label>
       <button class="secondario" id="b-annulla" disabled>Annulla punto</button>
       <button id="b-fine" disabled>Fine arco</button>
@@ -145,11 +170,12 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
 
   <section class="passo">
     <h2>4 · Misure</h2>
-    <div id="misure"><p class="nota" style="margin:0">Nessuna misura.</p></div>
+    <div id="provino-ris" class="solo-provino"><p class="nota" style="margin:0">Carica le foto TOP e BOT: l’analisi parte da sola.</p></div>
+    <div id="misure" class="solo-libera"><p class="nota" style="margin:0">Nessuna misura.</p></div>
     <div id="pareti"></div>
     <div class="azioni" style="margin-top:12px">
       <button id="b-csv" disabled>Salva misure (CSV)</button>
-      <button class="secondario" id="b-json" disabled>Salva sessione</button>
+      <button class="secondario solo-libera" id="b-json" disabled>Salva sessione</button>
     </div>
     <div id="csv-fallback"></div>
   </section>
@@ -438,18 +464,24 @@ function trovaConBordi(gray, cal, raggioMm = 150) {
   if (!best || area / ppm ** 2 < 30) return null;
   return best;
 }
-function trovaOggetto(gray, cal) {
-  let box = trovaConBordi(gray, cal); if (!box) box = trovaPerGrigio(gray, cal); if (!box) return null;
+function trovaOggetto(gray, cal, pettine = false) {
+  let box = trovaConBordi(gray, cal);
+  if (pettine) { // provino: unione con il riconoscimento per livelli di grigio su raggio ampio (non tagliarlo)
+    const b2 = trovaPerGrigio(gray, cal, 150);
+    const W_ = gray.cols, H_ = gray.rows, mx_ = 0.02 * W_, my_ = 0.02 * H_;
+    const bordiFoto = b2 ? [b2[0] <= mx_, b2[1] <= my_, b2[0] + b2[2] >= W_ - mx_, b2[1] + b2[3] >= H_ - my_].filter(Boolean).length : 0;
+    if (b2 && bordiFoto < 2) box = box ? [Math.min(box[0], b2[0]), Math.min(box[1], b2[1]), Math.max(box[0] + box[2], b2[0] + b2[2]) - Math.min(box[0], b2[0]), Math.max(box[1] + box[3], b2[1] + b2[3]) - Math.min(box[1], b2[1])] : b2; }
+  if (!box) box = trovaPerGrigio(gray, cal); if (!box) return null;
   const [x, y, w, h] = box, c = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].map(p => applicaH(cal.H, p[0], p[1]));
   const cxs = c.map(p => p[0]), cys = c.map(p => p[1]);
-  const m = Math.max(10, 0.3 * Math.max(Math.max(...cxs) - Math.min(...cxs), Math.max(...cys) - Math.min(...cys)));   // margine ampio
+  const m = Math.max(pettine ? 15 : 10, (pettine ? 0.3 : 0.3) * Math.max(Math.max(...cxs) - Math.min(...cxs), Math.max(...cys) - Math.min(...cys)));   // margine ampio (provino: piu' ampio, per non tagliarlo)
   return [Math.min(...cxs) - m, Math.min(...cys) - m, Math.max(...cxs) + m, Math.max(...cys) + m];
 }
 
-function preparaFoto(gray, misuraL, misuraC, finestra, R, rot = null) {
+function preparaFoto(gray, misuraL, misuraC, finestra, R, rot = null, pettine = false) {
   const cal0 = calibra(gray, misuraL, misuraC); if (!cal0) return { errore: "Marker non trovati: servono almeno 2 dei 4 marker visibili." };
   const cal = orienta(cal0, rot);
-  let fin = finestra || trovaOggetto(gray, cal);
+  let fin = finestra || trovaOggetto(gray, cal, pettine);
   if (!fin) { const W = gray.cols, Hh = gray.rows, c = [[0, 0], [W - 1, 0], [W - 1, Hh - 1], [0, Hh - 1]].map(p => applicaH(cal.H, p[0], p[1]));
     const tutti = Object.values(cal.angoli).flat().map(p => applicaH(cal.H, p[0], p[1])), cx = media(tutti.map(p => p[0])), cy = media(tutti.map(p => p[1]));
     fin = [Math.max(Math.min(...c.map(p => p[0])), cx - 250), Math.max(Math.min(...c.map(p => p[1])), cy - 250),
@@ -483,8 +515,8 @@ function campionaS(F, x, y) { const d = liscia(F), W = F.w;
   return (d[y0 * W + x0] * (1 - fx) + d[y0 * W + x1] * fx) * (1 - fy) + (d[y1 * W + x0] * (1 - fx) + d[y1 * W + x1] * fx) * fy; }
 
 // ── direzione prevalente dei bordi dritti / dei tagli rettilinei (per mettere la vista in squadra) ──
-function angoloDominante(F) {
-  try { const Fl = copiaRidotta(F), S = segmenta(Fl);
+function angoloDominante(F, pettine = false) {
+  try { const Fl = copiaRidotta(F), S = segmenta(Fl, pettine);
     if (S) { const ap = matU8(Fl.w, Fl.h, S.aperture), kd = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(Math.max(3, Math.trunc(0.6 * Fl.R)) | 1, Math.max(3, Math.trunc(0.6 * Fl.R)) | 1));
       const op = new cv.Mat(); cv.morphologyEx(ap, op, cv.MORPH_OPEN, kd); ap.delete(); kd.delete();
       const C = componenti(op); op.delete(); const sx = new Float64Array(C.n), sy = new Float64Array(C.n), sxx = new Float64Array(C.n), syy = new Float64Array(C.n), sxy = new Float64Array(C.n), nn = new Float64Array(C.n);
@@ -558,14 +590,76 @@ function larghezzaProfiloAuto(prof, passo) {
   const sx = subpixel(g.map(v => -v), iS), dx = subpixel(g, iD);
   return { w: (dx - sx) * passo, a: (sx - c0) * passo, b: (dx - c0) * passo };
 }
-function misuraFessura(F, m) {
-  const R = F.R, L = (0.75 * m.larg_mm + 0.4) * R, passo = 0.25, val = [], segm = [];
+// bordi della parte scura del taglio: a meta' strada tra il fondo scuro e il metallo vicino (lato per lato)
+function larghezzaSoglia(prof, passo) {
+  const r0 = larghezzaProfiloAuto(prof, passo); if (!r0) return null;
+  const ps = gauss1d(prof, Math.max(1, 0.3 / passo)), n = ps.length, c0 = Math.trunc(n / 2), a = c0 + r0.a / passo, b = c0 + r0.b / passo, w = b - a;
+  if (w < 4) return r0;
+  const dentro = ps.slice(Math.trunc(a + 0.25 * w), Math.trunc(b - 0.25 * w) + 1); if (!dentro.length) return r0;
+  const srt = dentro.slice().sort((p, q) => p - q), fondo = srt[Math.trunc(0.3 * (srt.length - 1))], m_ = Math.max(2, Math.trunc(0.5 * w));
+  const sx = ps.slice(Math.max(0, Math.trunc(a) - 3 * m_), Math.max(1, Math.trunc(a) - m_)), dx = ps.slice(Math.min(n - 1, Math.trunc(b) + m_), Math.min(n, Math.trunc(b) + 3 * m_));
+  if (sx.length < 2 || dx.length < 2) return r0;
+  const f_ = 0.25;   // bordo vicino alla fine del nero (0 = nero, 1 = metallo)
+  const sS = fondo + f_ * (mediana(sx) - fondo), sD = fondo + f_ * (mediana(dx) - fondo), cl = Math.round((a + b) / 2);
+  if (!(cl > 0 && cl < n - 1) || ps[cl] >= Math.min(sS, sD)) return r0;
+  const lsx = attraversa(ps, sS, cl, -1), ldx = attraversa(ps, sD, cl, 1); if (lsx === null || ldx === null) return r0;
+  return { w: (ldx - lsx) * passo, a: (lsx - c0) * passo, b: (ldx - c0) * passo };
+}
+// solo la parte nera del taglio: metallo letto alle estremita' del profilo, bordo al 35% tra nero e metallo
+function larghezzaNera(prof, passo, frac = 0.35) {
+  const ps = gauss1d(prof, Math.max(1, 0.3 / passo)), n = ps.length; if (n < 20) return null;
+  const q = Math.max(3, Math.trunc(n / 6)), mS = mediana(ps.slice(0, q)), mD = mediana(ps.slice(n - q));
+  const cen = ps.slice(Math.trunc(n / 3), Math.trunc(2 * n / 3)); let cl = Math.trunc(n / 3); cen.forEach((v, i) => { if (v < ps[cl]) cl = Math.trunc(n / 3) + i; });
+  const srt = cen.slice().sort((a, b) => a - b), fondo = srt[Math.trunc(0.1 * (srt.length - 1))];
+  if (Math.min(mS, mD) - fondo < 20) return null;
+  const lsx = attraversa(ps, fondo + frac * (mS - fondo), cl, -1), ldx = attraversa(ps, fondo + frac * (mD - fondo), cl, 1);
+  if (lsx === null || ldx === null) return null; const c0 = Math.trunc(n / 2);
+  return { w: (ldx - lsx) * passo, a: (lsx - c0) * passo, b: (ldx - c0) * passo };
+}
+// misura sulla maschera binaria del taglio: soglia di Otsu locale (tratti di 2 mm) tra taglio e metallo,
+// larghezza = estensione della parte sotto soglia lungo la perpendicolare, profili mediati su 0,8 mm
+function misuraMaschera(F, m) {
+  const R = F.R, L = (0.75 * m.larg_mm + 1.0) * R, passo = 0.25, sez = [];
   m.tocchi.forEach(([x, y], i) => { const [nx, ny] = m.normali[i], cx = (x - F.fin[0]) * R, cy = (y - F.fin[1]) * R;
-    const r = larghezzaProfiloAuto(profilo(F, cx, cy, nx, ny, -L, L, passo), passo); if (!r) return;
-    val.push(r.w / R); segm.push([[cx + r.a * nx, cy + r.a * ny], [cx + r.b * nx, cy + r.b * ny]]); });
+    const pp = [-0.4, -0.2, 0, 0.2, 0.4].map(o => profilo(F, cx - o * R * ny, cy + o * R * nx, nx, ny, -L, L, passo));
+    sez.push({ x, y, cx, cy, nx, ny, pr: pp[0].map((_, k) => mediana(pp.map(q => q[k]))) }); });
+  if (sez.length < 3) return { errore: "Bordi della fessura non trovati" };
+  const mx = media(sez.map(q => q.x)), my = media(sez.map(q => q.y)); let a = 0, b = 0, c = 0;
+  for (const q of sez) { a += (q.x - mx) ** 2; b += (q.x - mx) * (q.y - my); c += (q.y - my) ** 2; }
+  const th = 0.5 * Math.atan2(2 * b, a - c), u = [Math.cos(th), Math.sin(th)], pos = sez.map(q => (q.x - mx) * u[0] + (q.y - my) * u[1]);
+  const val = [], segm = [], posiz = [];
+  sez.forEach((q, i) => {
+    const pool = []; sez.forEach((r, j) => { if (Math.abs(pos[j] - pos[i]) <= 1.0) for (const v of r.pr) pool.push(Math.max(0, Math.min(255, v))); });
+    const t = otsuValori(pool);
+    if (m.no_saturi && Math.max(...q.pr) >= 250 && q.pr.filter(v => v >= 250).length / q.pr.length > 0.2) return;
+    const ps = gauss1d(q.pr, Math.max(1, 0.3 / passo)), n = ps.length; let cl = Math.trunc(n / 3);
+    for (let k = Math.trunc(n / 3); k < Math.trunc(2 * n / 3); k++) if (ps[k] < ps[cl]) cl = k;
+    if (ps[cl] >= t) return;
+    const lsx = attraversa(ps, t, cl, -1), ldx = attraversa(ps, t, cl, 1); if (lsx === null || ldx === null) return;
+    const c0 = Math.trunc(n / 2), aa = (lsx - c0) * passo, bb = (ldx - c0) * passo;
+    val.push((ldx - lsx) * passo / R); posiz.push([q.x, q.y]); segm.push([[q.cx + aa * q.nx, q.cy + aa * q.ny], [q.cx + bb * q.nx, q.cy + bb * q.ny]]); });
+  if (val.length < 3) return { errore: "Bordi della fessura non trovati" };
+  return { valore: mediana(val), media: media(val), minimo: Math.min(...val), massimo: Math.max(...val), rms: stdCamp(val), n: val.length, unita: 'mm', valori: val, posizioni: posiz, geo: { segmenti: segm } };
+}
+function misuraFessura(F, m) {
+  if (m.metodo === 'maschera') return misuraMaschera(F, m);
+  if (m.metodo === 'bordo_metallo') { // bordo superiore al 75% tra nero e metallo (piede della rampa della parete), profili mediati
+    const r = misuraFessura(F, { ...m, metodo: 'nero', frac: 0.75, striscia: true }); return r.errore ? misuraFessura(F, { ...m, metodo: 'combinato' }) : r; }
+  if (m.metodo === 'combinato') { // gradiente su profilo mediato, con la maschera come controllo (oltre 0,15 mm vale la maschera)
+    const rg = misuraFessura(F, { ...m, metodo: undefined, striscia: true }), rm = misuraMaschera(F, m);
+    if (rg.errore) return rm; if (rm.errore) return rg;
+    return Math.abs(rg.valore - rm.valore) > 0.15 ? { ...rm, criterio: 'maschera' } : { ...rg, criterio: 'gradiente' }; }
+  const R = F.R, L = (0.75 * m.larg_mm + 0.4) * R, passo = 0.25, val = [], segm = [], pos = [], misura = m.metodo === 'soglia' ? larghezzaSoglia : m.metodo === 'nero' ? ((p, q) => larghezzaNera(p, q, m.frac ?? 0.35)) : larghezzaProfiloAuto;
+  m.tocchi.forEach(([x, y], i) => { const [nx, ny] = m.normali[i], cx = (x - F.fin[0]) * R, cy = (y - F.fin[1]) * R;
+    let pr; if (m.striscia) { // profilo mediato su una striscia di +-0,4 mm lungo il taglio (toglie la grana del metallo)
+      const pp = [-0.4, -0.2, 0, 0.2, 0.4].map(o => profilo(F, cx - o * R * ny, cy + o * R * nx, nx, ny, -L, L, passo)); pr = pp[0].map((_, i) => mediana(pp.map(q => q[i]))); }
+    else pr = profilo(F, cx, cy, nx, ny, -L, L, passo);
+    if (m.no_saturi && Math.max(...pr) >= 250) return;   // riflesso: bordo inaffidabile
+    const r = misura(pr, passo); if (!r) return;
+    pos.push([x, y]); val.push(r.w / R); segm.push([[cx + r.a * nx, cy + r.a * ny], [cx + r.b * nx, cy + r.b * ny]]); });
   if (val.length < 3) return { errore: "Bordi della fessura non trovati" };
   const med = mediana(val), mu = media(val);
-  return { valore: med, media: mu, minimo: Math.min(...val), massimo: Math.max(...val), rms: stdCamp(val), n: val.length, unita: 'mm', geo: { segmenti: segm } };
+  return { valore: med, media: mu, minimo: Math.min(...val), massimo: Math.max(...val), rms: stdCamp(val), n: val.length, unita: 'mm', valori: val, posizioni: pos, geo: { segmenti: segm } };
 }
 
 // ── scheletro (Zhang-Suen) ──
@@ -617,15 +711,24 @@ function sagomaGrabcut(F) {
   const big = new cv.Mat(); cv.resize(s8, big, new cv.Size(F.w, F.h), 0, 0, cv.INTER_LINEAR); s8.delete();
   const out = new Uint8Array(F.w * F.h); for (let i = 0; i < out.length; i++) out[i] = big.data32F[i] > 0.5 ? 1 : 0; big.delete(); return out;
 }
-function segmenta(F) {
+function segmenta(F, pettine = false) {
   const R = F.R, W = F.w, H = F.h, N = W * H, src = matU8(W, H, F.data), imgM = sfoca(src, 1.0); src.delete();
   const img = Uint8Array.from(imgM.data), chM = new cv.Mat(); cv.threshold(imgM, chM, 0, 1, cv.THRESH_BINARY + cv.THRESH_OTSU); imgM.delete();
   const chiaro = Uint8Array.from(chM.data); chM.delete();
   const b = Math.max(3, Math.trunc(2 * R)); let sb = 0, nb = 0; const bordoG = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (y < b || y >= H - b || x < b || x >= W - b) { sb += chiaro[y * W + x]; nb++; bordoG.push(img[y * W + x]); }
-  const sfondoChiaro = sb / nb >= 0.5;
+  let sfondoChiaro = sb / nb >= 0.5;
+  if (pettine) { // provino: la finestra e' centrata sul provino, il materiale e' la classe del centro
+    let sc = 0, nc = 0; for (let y = Math.trunc(0.35 * H); y < Math.trunc(0.65 * H); y++) for (let x = Math.trunc(0.35 * W); x < Math.trunc(0.65 * W); x++) { sc += chiaro[y * W + x]; nc++; }
+    sfondoChiaro = sc / Math.max(nc, 1) < 0.5; }
   let matM = new cv.Mat(H, W, cv.CV_8U); for (let i = 0; i < N; i++) matM.data[i] = (sfondoChiaro ? chiaro[i] === 0 : chiaro[i] === 1) ? 1 : 0;
-  let t = morf(matM, cv.MORPH_OPEN, 0.08 * R); matM.delete(); matM = t; const silM = morf(matM, cv.MORPH_CLOSE, 0.3 * R);
+  let t = morf(matM, cv.MORPH_OPEN, 0.08 * R); matM.delete(); matM = t;
+  if (pettine && F.markerPx && F.markerPx.length) { // tolgo la scheda di carta (marker + 6 mm), che puo' toccare il provino
+    const sch = new cv.Mat(H, W, cv.CV_8U); sch.data.fill(0); const pts = F.markerPx.flat(), hm = cv.matFromArray(pts.length, 1, cv.CV_32SC2, pts.flat().map(Math.round)), hull = new cv.Mat();
+    cv.convexHull(hm, hull, false, true); const hp = []; for (let i = 0; i < hull.rows; i++) hp.push([hull.data32S[2 * i], hull.data32S[2 * i + 1]]); hm.delete(); hull.delete();
+    riempiPoligoni(sch, [hp], 1); const K = kern(12 * R), d = new cv.Mat(); cv.dilate(sch, d, K); K.delete(); sch.delete();
+    for (let i = 0; i < N; i++) if (d.data[i]) matM.data[i] = 0; d.delete(); }
+  const silM = morf(matM, cv.MORPH_CLOSE, 0.3 * R);
   const C0 = componenti(silM); silM.delete(); let best = -1, sc = -1;
   for (let i = 1; i < C0.n; i++) { const s = C0.stat[i], d = Math.hypot(s.x + s.w / 2 - W / 2, s.y + s.h / 2 - H / 2) / Math.max(W, H); if (s.a * (1 - d) > sc) { sc = s.a * (1 - d); best = i; } }
   if (best < 0) { matM.delete(); return null; }
@@ -652,7 +755,7 @@ function segmenta(F) {
   const sbd = sagomaDaBordi(F, mag); if (sbd) ipotesi.push(['bordi', sbd, Uint8Array.from(sbd)]);
   const pt = ipotesi.map(([, sg]) => punteggio(sg)); let k = 0; for (let i = 1; i < pt.length; i++) if (pt[i] > pt[k]) k = i;
   let nomeSagoma = ipotesi[k][0]; sil = ipotesi[k][1]; mat = ipotesi[k][2];
-  if (contrasto < 0.75) { // caso difficile (metallo lucido, ombre, luce non uniforme): GrabCut
+  if (contrasto < 0.75 && !pettine) { // caso difficile (metallo lucido, ombre, luce non uniforme): GrabCut
     const sg = sagomaGrabcut(F);
     if (sg) { nomeSagoma = 'grabcut'; sil = sg;
       const fm = new cv.Mat(); { const s = matU8(W, H, F.data); s.convertTo(fm, cv.CV_32F); s.delete(); }
@@ -670,22 +773,29 @@ function segmenta(F) {
           const cs3 = contorniEsterni(comp); comp.delete(); const per = cs3.length ? cs3[0].per : 0;
           if (per > 0 && 4 * Math.PI * a_ / per ** 2 > 0.6) for (let y = 0; y < st3.h; y++) for (let x = 0; x < st3.w; x++) { const q = (y + st3.y) * W + x + st3.x; if (C3.L[q] === i) mat[q] = 0; } } } } }
   const daBordi = nomeSagoma !== 'soglia';
-  const silM3 = matU8(W, H, sil), pienoM = riempi(silM3); silM3.delete(); const pieno = Uint8Array.from(pienoM.data);
-  const cont = contorniEsterni(pienoM); pienoM.delete(); if (!cont.length) return null;
+  const silM3 = matU8(W, H, sil), pienoM = riempi(silM3); silM3.delete();
+  const cont = contorniEsterni(pienoM); if (!cont.length) { pienoM.delete(); return null; }
+  if (pettine) { // provino a pettine: inviluppo convesso, cosi' i tagli aperti sul bordo restano "dentro"
+    const big = cont.reduce((a, q) => q.area > a.area ? q : a), cm = cv.matFromArray(big.P.length, 1, cv.CV_32SC2, big.P.flat()), hull = new cv.Mat();
+    cv.convexHull(cm, hull, false, true); const hp = []; for (let i = 0; i < hull.rows; i++) hp.push([hull.data32S[2 * i], hull.data32S[2 * i + 1]]); cm.delete(); hull.delete();
+    pienoM.data.fill(0); riempiPoligoni(pienoM, [hp], 1); }
+  const pieno = Uint8Array.from(pienoM.data); pienoM.delete();
   const contorno = cont.reduce((a, q) => q.area > a.area ? q : a).P;
   const ap = new Uint8Array(N); for (let i = 0; i < N; i++) ap[i] = (pieno[i] && !mat[i]) ? 1 : 0;
   // fessure piu' scure del metallo (luce frontale): seconda classe di grigio dentro la sagoma
   const dentro = []; for (let i = 0; i < N; i++) if (pieno[i] && mat[i]) dentro.push(img[i]);
-  if (dentro.length > 500) { const t2 = otsuValori(dentro); const lo = dentro.filter(v => v <= t2), hi = dentro.filter(v => v > t2);
+  if (dentro.length > 500 && !pettine) { const t2 = otsuValori(dentro);   // nel provino basta il black-hat const lo = dentro.filter(v => v <= t2), hi = dentro.filter(v => v > t2);
     if (lo.length && hi.length) { const piuScura = lo.length < hi.length, minor = piuScura ? lo : hi, major = piuScura ? hi : lo;
       const separate = Math.abs(media(major) - media(minor)) > Math.max(30, 2.5 * (stdCamp(major) + stdCamp(minor)) / 2);
       if (separate && minor.length < 0.4 * dentro.length) for (let i = 0; i < N; i++) if (pieno[i] && (piuScura ? img[i] <= t2 : img[i] > t2)) ap[i] = 1; } }
-  if (nomeSagoma === 'grabcut') { // fessure scure e strette con luce non uniforme: black-hat
-    const s0 = matU8(W, H, F.data), g1 = sfoca(s0, 1.0); s0.delete(); const bh = morf(g1, cv.MORPH_BLACKHAT, 2.5 * R); g1.delete();
+  if (nomeSagoma === 'grabcut' || pettine) { // fessure scure e strette con luce non uniforme: black-hat
+    const s0 = matU8(W, H, F.data), g1 = sfoca(s0, 1.0); s0.delete(); const bh = morf(g1, cv.MORPH_BLACKHAT, 2.5 * R);
     const pm = matU8(W, H, pieno), K = kern(0.3 * R), er = new cv.Mat(); cv.erode(pm, er, K); pm.delete(); K.delete();
-    const v = []; for (let i = 0; i < N; i++) if (er.data[i]) v.push(bh.data[i]);
-    if (v.length > 500) { const t3 = otsuValori(v); if (t3 > 20) for (let i = 0; i < N; i++) if (er.data[i] && bh.data[i] > t3) ap[i] = 1; }
-    bh.delete(); er.delete(); }
+    if (pettine) { // taglio = molto piu' scuro del metallo attorno, in proporzione (la grana nei riflessi no)
+      const ch = morf(g1, cv.MORPH_CLOSE, 2.5 * R); for (let i = 0; i < N; i++) if (er.data[i] && bh.data[i] / Math.max(ch.data[i], 1) > 0.4) ap[i] = 1; ch.delete(); }
+    else { const v = []; for (let i = 0; i < N; i++) if (er.data[i]) v.push(bh.data[i]);
+      if (v.length > 500) { const t3 = otsuValori(v); if (t3 > 20) for (let i = 0; i < N; i++) if (er.data[i] && bh.data[i] > t3) ap[i] = 1; } }
+    g1.delete(); bh.delete(); er.delete(); }
   const apM = matU8(W, H, ap), apO = morf(apM, cv.MORPH_OPEN, 0.08 * R); apM.delete(); const aperture = Uint8Array.from(apO.data); apO.delete();
   return { pieno, aperture, contorno, contrasto, daBordi, sagoma: nomeSagoma };
 }
@@ -740,10 +850,10 @@ function piuVicini(Pa, Pb, gb, cella) { let best = [Infinity, -1, -1];
     for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) { const l = gb.get((cx + dx) + ',' + (cy + dy)); if (!l) continue;
       for (const ib of l) { const d = Math.hypot(p[0] - Pb[ib][0], p[1] - Pb[ib][1]); if (d < best[0]) best = [d, ia, ib]; } } });
   return best; }
-function analisiAutomatica(Fp, forza = false) {
-  const F = copiaRidotta(Fp, 10), S = segmenta(F); if (!S) return { misure: [], errore: "Pezzo non riconosciuto" };
+function analisiAutomatica(Fp, forza = false, pettine = false) {
+  const F = copiaRidotta(Fp, 10), S = segmenta(F, pettine); if (!S) return { misure: [], errore: "Pezzo non riconosciuto" };
   Fp.contrasto = S.contrasto;
-  if (S.contrasto < 0.6 && !forza && !S.daBordi) return { misure: [], errore: "contrasto", contrasto: S.contrasto };
+  if (S.contrasto < 0.6 && !forza && !S.daBordi && !pettine) return { misure: [], errore: "contrasto", contrasto: S.contrasto };
   const R = F.R, W = F.w, H = F.h, N = W * H, mm = p => [p[0] / R + F.fin[0], p[1] / R + F.fin[1]], misure = [], candidati = [], contorni = [];
   const apM = matU8(W, H, S.aperture), C = componenti(apM); apM.delete();
   for (let i = 1; i < C.n; i++) { const st = C.stat[i]; if (st.a / R ** 2 < 0.2) continue;
@@ -778,7 +888,7 @@ function analisiAutomatica(Fp, forza = false) {
         const th = 0.5 * Math.atan2(2 * b, a - cc), t = [Math.cos(th), Math.sin(th)]; punti.push(gl(x, y)); normali.push([-t[1], t[0]]); }
       if (punti.length < 6) continue;
       const larg = 2 * mediana(pj.map(q => dt[q])) / R, mf = { tipo: 'fessura', tocchi: punti, normali, larg_mm: larg, aggancia: false, auto: true }, rf = misuraFessura(F, mf);
-      if (!rf.errore && rf.rms <= Math.max(0.05, 0.15 * rf.valore)) candidati.push(mf); } }
+      if (!rf.errore && (pettine || rf.rms <= Math.max(0.05, 0.15 * rf.valore))) candidati.push(mf); } }   // bordi d'uscita frastagliati: ok nel provino
   // riunisco i tratti della stessa fessura (allineati, scostamento < meta' larghezza, distanza < 20 mm)
   const asse = m => { const P = m.tocchi, mx = media(P.map(p => p[0])), my = media(P.map(p => p[1])); let a = 0, b = 0, c = 0;
     for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; } const th = 0.5 * Math.atan2(2 * b, a - c); return [[mx, my], [Math.cos(th), Math.sin(th)], P]; };
@@ -794,6 +904,7 @@ function analisiAutomatica(Fp, forza = false) {
     return ax !== bx ? ax - bx : media(A.flatMap(m => m.tocchi.map(t => t[1]))) - media(B.flatMap(m => m.tocchi.map(t => t[1]))); });
   for (const g of ordinati) { const mf = { tipo: 'fessura', tocchi: g.flatMap(m => m.tocchi), normali: g.flatMap(m => m.normali), larg_mm: mediana(g.map(m => m.larg_mm)), aggancia: false, auto: true };
     const rf = misuraFessura(F, mf); if (rf.errore) continue; misure.push(mf); contorni.push(rf.geo.segmenti.flat()); }
+  if (pettine) return { misure: misure.filter(m => m.tipo === 'fessura'), contrasto: S.contrasto };
   // ponti tra fori/fessure vicini (e tra questi e il contorno esterno)
   const tutti = contorni.concat([S.contorno]), cella = 1.5 * R, griglie = tutti.map(P => griglia(P, cella));
   for (let a = 0; a < contorni.length; a++) for (let b = a + 1; b < tutti.length; b++) {
@@ -810,6 +921,115 @@ function analisiAutomatica(Fp, forza = false) {
     const sel = []; for (let q = 0; q < 6; q++) sel.push(P[Math.trunc(0.1 * (P.length - 1) + q * 0.8 * (P.length - 1) / 5)]);
     misure.push({ tipo: 'raggio', tocchi: sel.map(mm), aggancia: true, auto: true }); }
   return { misure, contrasto: S.contrasto };
+}
+
+// ── provino a pettine: tagli rettilinei ordinati da sinistra a destra ──
+function rilevaTagli(F, n = 0, minLungMm = 5) {
+  // tagli verticali oppure orizzontali (es. faccia BOT fotografata ruotata): vale la maggioranza
+  const A = analisiAutomatica(F, true, true), cand = [], c15 = Math.cos(15 * Math.PI / 180);
+  for (const m of A.misure) { const P = m.tocchi; if (P.length < 6) continue;
+    const mx = media(P.map(p => p[0])), my = media(P.map(p => p[1])); let a = 0, b = 0, c = 0; for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; }
+    const th = 0.5 * Math.atan2(2 * b, a - c), u = [Math.cos(th), Math.sin(th)], pr = P.map(([x, y]) => (x - mx) * u[0] + (y - my) * u[1]), lung = Math.max(...pr) - Math.min(...pr);
+    if (lung < minLungMm) continue;
+    const verso = Math.abs(u[1]) >= c15 ? 'v' : Math.abs(u[0]) >= c15 ? 'o' : null; if (!verso) continue;
+    cand.push({ verso, m, mx, my, lung }); }
+  if (!cand.length) return [];
+  const somma = v => cand.filter(t => t.verso === v).reduce((s_, t) => s_ + t.lung, 0), magg = somma('v') >= somma('o') ? 'v' : 'o', out = [];
+  for (const t of cand) { if (t.verso !== magg) continue; const r = calcola(F, t.m); if (!r || r.errore) continue;
+    out.push({ x: magg === 'v' ? t.mx : t.my, m: t.m, r, lung: t.lung, verso: magg }); }
+  // se ne trova piu' del previsto tengo gli n tagli consecutivi a passo piu' regolare (il bordo del provino
+  // o un segno di pennarello, anche se lunghi, rompono la regolarita' del pettine)
+  let ord = out.sort((p, q) => p.x - q.x);
+  if (n > 0 && ord.length > n) {
+    const lmed = mediana(ord.map(t => t.lung)), cand = ord.filter(t => t.lung >= 0.3 * lmed);
+    if (cand.length > n) { let best = null, bs = Infinity;
+      for (let i = 0; i + n <= cand.length; i++) { const f_ = cand.slice(i, i + n), dx = []; for (let k = 1; k < n; k++) dx.push(f_[k].x - f_[k - 1].x);
+        const sc = stdCamp(dx) / Math.max(media(dx), 1e-6) + 0.2 * media(f_.map(t => 1 - Math.min(1, t.lung / lmed))); if (sc < bs) { bs = sc; best = f_; } }
+      ord = best; } else ord = cand;
+    if (ord.length > n) ord = ord.slice().sort((p, q) => q.lung - p.lung).slice(0, n).sort((p, q) => p.x - q.x); }
+  return ord.length ? parteCentrale(F, ord) : ord;
+}
+
+// le due righe a pennarello che delimitano la parte centrale dei tagli (picchi stretti di scurezza
+// lungo la direzione dei tagli, misurati sul metallo tra un taglio e l'altro)
+function trovaRighe(F, tagli) {
+  const R = F.R, vert = tagli[0].verso === 'v', W = F.w, H = F.h, k = vert ? 1 : 0, off = F.fin[k], offP = F.fin[1 - k];
+  const pos = tagli.map(t => (t.x - offP) * R), asse = tagli.flatMap(t => t.m.tocchi.map(q => q[k]));
+  const NA = vert ? H : W, NC = vert ? W : H;
+  const a0 = Math.max(0, Math.trunc((Math.min(...asse) - off) * R)), a1 = Math.min(NA, Math.trunc((Math.max(...asse) - off) * R));
+  const c0 = Math.max(0, Math.trunc(Math.min(...pos) - 0.5 * R)), c1 = Math.min(NC, Math.trunc(Math.max(...pos) + 0.5 * R));
+  if (a1 - a0 < 10 * R || c1 - c0 < 5 * R) return null;
+  const src = matU8(W, H, F.data), g = sfoca(src, 1.0); src.delete(); const bh = morf(g, cv.MORPH_BLACKHAT, 2.5 * R); g.delete();
+  const col = new Uint8Array(NC); for (let c = c0; c < c1; c++) col[c] = 1;
+  for (const p of pos) for (let c = Math.max(0, Math.trunc(p - 1.2 * R)); c <= Math.min(NC - 1, Math.trunc(p + 1.2 * R)); c++) col[c] = 0;
+  const cols = []; for (let c = 0; c < NC; c++) if (col[c]) cols.push(c); if (cols.length < 3 * R) { bh.delete(); return null; }
+  let prof = []; for (let a = a0; a < a1; a++) { const v = cols.map(c => vert ? bh.data[a * W + c] : bh.data[c * W + a]); prof.push(mediana(v)); }
+  // profili delle singole fasce di metallo tra un taglio e l'altro (una riga c'e' in tutte, le scritte no)
+  const ps_ = pos.slice().sort((p, q) => p - q), fasceP = [];
+  for (let q = 0; q + 1 < ps_.length; q++) { const x0_ = Math.trunc(ps_[q] + 1.2 * R), x1_ = Math.trunc(ps_[q + 1] - 1.2 * R); if (x1_ - x0_ < 3) continue;
+    let pf = []; for (let a = a0; a < a1; a++) { const v = []; for (let c = x0_; c < x1_; c++) v.push(vert ? bh.data[a * W + c] : bh.data[c * W + a]); pf.push(mediana(v)); }
+    pf = gauss1d(pf, Math.max(1, 0.3 * R)); const ww = Math.max(5, Math.trunc(3 * R)) | 1, hh = (ww - 1) / 2;
+    fasceP.push(pf.map((v, i) => v - mediana(pf.slice(Math.max(0, i - hh), Math.min(pf.length, i + hh + 1))))); }
+  bh.delete();
+  prof = gauss1d(prof, Math.max(1, 0.3 * R));
+  const w = Math.max(5, Math.trunc(3 * R)) | 1, h = (w - 1) / 2, base = prof.map((_, i) => mediana(prof.slice(Math.max(0, i - h), Math.min(prof.length, i + h + 1))));
+  const d = prof.map((v, i) => v - base[i]), soglia = Math.max(5, 0.35 * Math.max(...d)), picchi = [];
+  const w_ = Math.max(2, Math.trunc(0.4 * R)), continua = i => !fasceP.length || fasceP.filter(f_ => Math.max(...f_.slice(Math.max(0, i - w_), i + w_ + 1)) > 0.4 * d[i]).length / fasceP.length >= 0.75;
+  const sottile = i => { const h = 0.5 * d[i]; let a = i, b = i; while (a > 0 && d[a - 1] > h) a--; while (b < d.length - 1 && d[b + 1] > h) b++; return (b - a + 1) <= 1.5 * R; };   // riga a pennarello: alta meno di 1,5 mm
+  for (let i = 1; i < d.length - 1; i++) if (d[i] >= d[i - 1] && d[i] >= d[i + 1] && d[i] > soglia && continua(i) && sottile(i)) picchi.push(i);
+  picchi.sort((p, q) => d[q] - d[p]); const scelti = [];
+  for (const i of picchi) { if (scelti.every(j => Math.abs(i - j) > 15 * R)) scelti.push(i); /* righe ad almeno 15 mm (non le scritte) */ if (scelti.length === 2) break; }
+  if (scelti.length < 2) return null; scelti.sort((p, q) => p - q);
+  return [(scelti[0] + a0) / R + off, (scelti[1] + a0) / R + off];
+}
+// senza righe: tratto a larghezza stabile (mediana mobile su 2 mm entro il 6%, almeno 0,05 mm, dal valore centrale)
+function zonaStabile(F, tagli, k, fin = 2, minimo = 5) {
+  const inizi = [], fini = [];
+  for (const t of tagli) { const P = t.m.tocchi, mx = media(P.map(p => p[0])), my = media(P.map(p => p[1])); let a = 0, b = 0, c = 0;
+    for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; } const th = 0.5 * Math.atan2(2 * b, a - c), nrm = [-Math.sin(th), Math.cos(th)];
+    const r = misuraFessura(F, { ...t.m, normali: P.map(() => nrm), metodo: 'maschera' }); if (r.errore || r.valori.length < 10) continue;
+    const pv = r.posizioni.map((q, i) => [q[k], r.valori[i]]).sort((p, q) => p[0] - q[0]), p_ = pv.map(x => x[0]), v_ = pv.map(x => x[1]);
+    const rm = p_.map(pp => mediana(v_.filter((_, i) => Math.abs(p_[i] - pp) <= fin / 2)));
+    const q1 = p_[Math.trunc(0.25 * (p_.length - 1))], q3 = p_[Math.trunc(0.75 * (p_.length - 1))], ref = mediana(v_.filter((_, i) => p_[i] >= q1 && p_[i] <= q3)), tol = Math.max(0.05, 0.06 * ref);
+    const ok = rm.map(v => Math.abs(v - ref) <= tol); let best = [0, 0, -1], i = 0;
+    while (i < ok.length) { if (ok[i]) { let j = i; while (j + 1 < ok.length && ok[j + 1] && p_[j + 1] - p_[j] < 1.5) j++; if (p_[j] - p_[i] > best[0]) best = [p_[j] - p_[i], i, j]; i = j + 1; } else i++; }
+    if (best[0] >= minimo) { inizi.push(p_[best[1]]); fini.push(p_[best[2]]); } }
+  if (inizi.length < Math.max(2, Math.trunc(tagli.length / 2))) return null;
+  const lo = mediana(inizi), hi = mediana(fini); return hi - lo >= minimo ? [lo, hi] : null;
+}
+// solo la parte centrale dei tagli (avanzamento costante): tra le righe, con 1 mm di margine;
+// senza righe, il 60% centrale del tratto comune ai tagli
+function parteCentrale(F, tagli, margine = 1.0) {
+  const k = tagli[0].verso === 'v' ? 1 : 0; let righe = trovaRighe(F, tagli), lo, hi;
+  if (righe) { // buon senso: la zona tra le righe deve stare a meta' taglio e coprirne almeno il 30%
+    const tt = tagli.flatMap(t => t.m.tocchi.map(q => q[k])).sort((p, q) => p - q), a_ = tt[Math.trunc(0.02 * (tt.length - 1))], b_ = tt[Math.trunc(0.98 * (tt.length - 1))], L_ = b_ - a_, c_ = (righe[0] + righe[1]) / 2;
+    if (L_ <= 0 || c_ < a_ + 0.25 * L_ || c_ > b_ - 0.25 * L_ || righe[1] - righe[0] < 0.3 * L_ || righe[1] - righe[0] > 0.65 * L_) righe = null; }
+  const zs = righe ? null : zonaStabile(F, tagli, k);
+  if (righe) { lo = righe[0] + margine; hi = righe[1] - margine; F.zona = 'righe'; }
+  else if (zs) { // solo la meta' centrale del taglio: tratto stabile ∩ 50% centrale
+    const tt = tagli.flatMap(t => t.m.tocchi.map(q => q[k])).sort((p, q) => p - q), a_ = tt[Math.trunc(0.02 * (tt.length - 1))], b_ = tt[Math.trunc(0.98 * (tt.length - 1))], L_ = b_ - a_;
+    let z0 = Math.max(zs[0], a_ + 0.25 * L_), z1 = Math.min(zs[1], b_ - 0.25 * L_); if (z1 - z0 < 5) { z0 = a_ + 0.25 * L_; z1 = b_ - 0.25 * L_; }
+    lo = z0 + margine; hi = z1 - margine; F.zona = 'stabile'; }
+  else { const a = mediana(tagli.map(t => Math.min(...t.m.tocchi.map(q => q[k])))), b = mediana(tagli.map(t => Math.max(...t.m.tocchi.map(q => q[k])))), L_ = b - a;
+    lo = a + 0.2 * L_; hi = b - 0.2 * L_; F.zona = 'centro'; }
+  F.zonaMm = [lo, hi]; F.zonaVert = k === 1; const out = [];
+  for (const t of tagli) { const sel = []; t.m.tocchi.forEach((q, i) => { if (q[k] >= lo && q[k] <= hi) sel.push(i); }); if (sel.length < 3) continue;
+    // sezioni tutte perpendicolari all'asse del taglio (dritto)
+    const P = t.m.tocchi, mx = media(P.map(p => p[0])), my = media(P.map(p => p[1])); let a = 0, b = 0, c = 0;
+    for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; } const th = 0.5 * Math.atan2(2 * b, a - c), nrm = [-Math.sin(th), Math.cos(th)];
+    const mc = { ...t.m, tocchi: sel.map(i => t.m.tocchi[i]), normali: sel.map(() => nrm), no_saturi: true, metodo: 'bordo_metallo' }, r = calcola(F, mc);   // bordo superiore del taglio   // bordo al massimo gradiente
+    if (!r || r.errore) continue; out.push({ ...t, m: mc, r, lung: hi - lo }); }
+  return out;
+}
+function assegnaTagli(tagliFoto, n) {
+  const rif = tagliFoto.find(t => t.length === n) || tagliFoto.reduce((a, t) => t.length > a.length ? t : a, []);
+  let xr = rif.map(t => t.x); const d = []; for (let i = 1; i < xr.length; i++) d.push(xr[i] - xr[i - 1]); let passo = d.length ? mediana(d) : 5;
+  if (n && xr.length >= 2 && xr.length < n) { // manca qualche taglio (getto che non ha attraversato): griglia a passo costante
+    const dm = Math.min(...d); passo = mediana(d.filter(v => v < 1.5 * dm)); const ultimo = Math.round((xr[xr.length - 1] - xr[0]) / passo);
+    if (ultimo <= n - 1) { const x0 = xr[0]; xr = [...Array(n).keys()].map(k => x0 + k * passo); } }
+  const ass = tagliFoto.map(tagli => { const a = new Map(); for (const t of tagli) { if (!xr.length) break; let k = 0; xr.forEach((x, i) => { if (Math.abs(t.x - x) < Math.abs(t.x - xr[k])) k = i; });
+      if (Math.abs(t.x - xr[k]) < 0.4 * passo && (!a.has(k) || t.lung > a.get(k).lung)) a.set(k, t); } return a; });
+  return { ass, n: xr.length };
 }
 
 // ── calcolo di una misura su una foto ──
@@ -842,7 +1062,7 @@ function calcola(F, m) {
   return null;
 }
 
-return { preparaFoto, calcola, analisiAutomatica, angoloDominante, segmenta, copiaRidotta, media, stdCamp, mediana };
+return { preparaFoto, calcola, analisiAutomatica, angoloDominante, segmenta, copiaRidotta, rilevaTagli, assegnaTagli, media, stdCamp, mediana };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = creaLibero; else root.creaLibero = creaLibero;
 })(this);
@@ -860,6 +1080,7 @@ const foto = [];                     // {nome, lato, stato, msg, F, img}
 const misure = [];                   // {id, nome, tipo, lato, tocchi, aggancia, ..., coppia, ris: Map, storico}
 const cornice = { TOP: null, BOT: null };   // finestra, risoluzione e rotazione comuni per faccia
 let corrente = -1, strumento = "distanza", pendenti = [], saltate = new Set(), confermaAuto = false;
+let modo = "provino", provino = null;    // provino: risultati dell'analisi a pettine
 const conta = { distanza: 0, raggio: 0, diametro: 0, foro: 0, angolo: 0, fessura: 0, ponte: 0, ingombro: 0 };
 const SIGLA = { distanza: "D", raggio: "R", diametro: "Ø", foro: "F", angolo: "A", fessura: "S", ponte: "P", ingombro: "G" };
 const NOME_TIPO = { distanza: "Distanza", raggio: "Raggio", diametro: "Diametro", foro: "Diametro foro", angolo: "Angolo",
@@ -874,6 +1095,27 @@ const GUIDA = {
   elimina: "Tocca una misura sull’immagine per cancellarla (anche la × nella tabella)."
 };
 const COL = { distanza: "#2EC4F1", raggio: "#F0399A", diametro: "#7BE05A", foro: "#7BE05A", angolo: "#B48CFF", fessura: "#F5B700", ponte: "#FF8A3D", ingombro: "#E8E8E8" };
+
+// ── modalità ────────────────────────────────────────────────
+const GUIDA_MODO = {
+  provino: "Provino con tagli a pettine: carica le foto TOP (ingresso getto) e BOT (uscita getto); per ogni taglio la pagina dà la larghezza (mediana su tutte le foto) sopra e sotto e, con lo spessore, l’angolo delle pareti.",
+  libera: "Misura libera: analisi automatica di qualunque pezzo (fori, fessure, ponti, raggi, ingombro) e misure a tocco scelte da te, con abbinamento TOP/BOT e angolo delle pareti."
+};
+function impostaModo(m) {
+  modo = m; document.querySelectorAll("[data-modo]").forEach(b => b.setAttribute("aria-pressed", b.dataset.modo === m ? "true" : "false"));
+  document.querySelectorAll(".solo-provino").forEach(e => e.style.display = m === "provino" ? "" : "none");
+  document.querySelectorAll(".solo-libera").forEach(e => e.style.display = m === "libera" ? "" : "none");
+  $("#guida-modo").textContent = GUIDA_MODO[m]; $("#prossima").style.display = "none";
+  if (m === "libera") aggiornaProssima(); aggiornaPulsantiSalva(); disegnaChips(); disegna();
+}
+document.querySelectorAll("[data-modo]").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.modo === modo) return;
+  const cambia = () => { svuota(); impostaModo(b.dataset.modo); };
+  if (foto.length) { messaggio("Cambiando modalità foto e risultati vengono svuotati: tocca di nuovo per confermare.", "warn"); confermaSulPulsante(b, "Conferma", cambia); return; }
+  cambia();
+}));
+function aggiornaPulsantiSalva() { $("#b-csv").disabled = modo === "provino" ? !provino : !misure.length; $("#b-json").disabled = !misure.length;
+  $("#b-provino").disabled = !foto.some(f => f.stato === "ok"); }
 
 // ── impostazioni ────────────────────────────────────────────
 try { const s = JSON.parse(localStorage.getItem("kerf-libero2") || "{}"); ["l", "c", "sp"].forEach(k => { if (s[k]) $("#i-" + k).value = s[k]; }); } catch (e) {}
@@ -908,20 +1150,24 @@ function canvasDa(F) {
   ctx.putImageData(im, 0, 0); return c;
 }
 function disegnaChips() {
-  const box = $("#lista-foto"); box.querySelectorAll(".foto-chip").forEach(b => b.remove());
-  const prima = box.querySelector("label.bottone");
-  foto.forEach((f, i) => { const b = document.createElement("button"); b.className = "foto-chip" + (i === corrente ? " attiva" : "");
-    b.innerHTML = `<span></span><span class="st ${f.stato}"></span>`; b.children[0].textContent = `${f.lato} · ${f.nome}`;
+  document.querySelectorAll(".foto-chip").forEach(b => b.remove());
+  for (const lato of ["TOP", "BOT"]) { const n = foto.filter(f => f.lato === lato).length; $("#n-" + lato.toLowerCase()).textContent = n ? `(${n} foto)` : ""; }
+  foto.forEach((f, i) => { const box = $(f.lato === "BOT" ? "#lista-bot" : "#lista-top"), prima = box.querySelector("label.bottone");
+    const b = document.createElement("button"); b.className = "foto-chip" + (i === corrente ? " attiva" : "");
+    b.innerHTML = `<span></span><span class="st ${f.stato}"></span>`; b.children[0].textContent = f.nome;
     b.children[1].textContent = f.stato === "ok" ? "✓" : f.stato === "err" ? "✕" : "…";
-    b.title = f.msg || ""; b.addEventListener("click", () => { if (f.stato === "ok") { corrente = i; pendenti = []; disegnaChips(); adatta(); aggiornaTabella(); aggiornaProssima(); } else if (f.msg) alert(f.msg); });
+    b.title = f.msg || ""; b.addEventListener("click", () => { if (f.stato === "ok") { corrente = i; pendenti = []; disegnaChips(); adatta(); aggiornaTabella(); aggiornaProssima(); } else if (f.msg) messaggio(f.msg, "warn"); });
     box.insertBefore(b, prima); });
+  // provino: con 5 foto su una faccia il suo pulsante "+ Foto" sparisce (5 bastano)
+  for (const lato of ["TOP", "BOT"]) { const lab = $("#f-" + lato.toLowerCase()).closest("label"), n = foto.filter(f => f.lato === lato).length;
+    lab.style.display = modo === "provino" && n >= 5 ? "none" : ""; }
   $("#b-svuota").disabled = !foto.length;
   $("#b-auto").disabled = !(foto[corrente] && foto[corrente].F);
 }
 async function aggiungiFoto(files, lato) {
-  if (!L) { alert("Il motore di analisi non è ancora pronto: attendi qualche secondo."); return; }
+  if (!L) { messaggio("Il motore di analisi non è ancora pronto: attendi qualche secondo.", "warn"); return; }
   const ml = num($("#i-l").value), mc = num($("#i-c").value);
-  if (!(ml > 0 && mc > 0)) { alert("Inserisci le misure della scheda marker."); return; }
+  if (!(ml > 0 && mc > 0)) { messaggio("Inserisci le misure della scheda marker.", "warn"); return; }
   files = Array.from(files || []).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   for (const file of files) {
     const v = { nome: file.name, lato, stato: "attesa", msg: "Analisi in corso", F: null, img: null }; foto.push(v); disegnaChips();
@@ -931,9 +1177,9 @@ async function aggiungiFoto(files, lato) {
       g = await leggiGrigio(file);
       const cr = cornice[lato]; let F;
       if (!cr) {
-        F = L.preparaFoto(g, ml, mc, null, null, null);
-        if (!F.errore) { const a = L.angoloDominante(F);   // vista in squadra sul pezzo (tagli, lati dritti)
-          if (Math.abs(a.angolo) > 0.2 && a.affid > 0.15) { const F2 = L.preparaFoto(g, ml, mc, null, null, F.rot - a.angolo); if (!F2.errore) F = F2; } }
+        F = L.preparaFoto(g, ml, mc, null, null, null, modo === "provino");
+        if (!F.errore) { const a = L.angoloDominante(F, modo === "provino");   // vista in squadra sul pezzo (tagli, lati dritti)
+          if (Math.abs(a.angolo) > 0.2 && a.affid > 0.15) { const F2 = L.preparaFoto(g, ml, mc, null, null, F.rot - a.angolo, modo === "provino"); if (!F2.errore) F = F2; } }
       } else F = L.preparaFoto(g, ml, mc, cr.fin, cr.R, cr.rot);
       if (F.errore) { v.stato = "err"; v.msg = F.errore; }
       else {
@@ -945,18 +1191,107 @@ async function aggiungiFoto(files, lato) {
       }
     } catch (err) { v.stato = "err"; v.msg = "Errore durante l’analisi: " + (err && err.message ? err.message : err); }
     finally { if (g) g.delete(); }
-    disegnaChips(); disegna(); aggiornaTabella(); aggiornaProssima();
+    disegnaChips(); disegna(); aggiornaTabella(); aggiornaProssima(); provino = null; mostraProvino(); aggiornaPulsantiSalva();
   }
   messaggio("");
+  // provino: tutte le foto caricate (TOP e BOT) vengono analizzate subito, una misura per taglio
+  if (modo === "provino" && foto.some(f => f.stato === "ok")) await analizzaProvino();
 }
 $("#f-top").addEventListener("change", e => { const f = e.target.files; aggiungiFoto(f, "TOP").then(() => { e.target.value = ""; }); });
 $("#f-bot").addEventListener("change", e => { const f = e.target.files; aggiungiFoto(f, "BOT").then(() => { e.target.value = ""; }); });
-$("#b-svuota").addEventListener("click", () => {
-  if (misure.length && !confirm("Svuotare le foto? Anche le misure verranno eliminate.")) return;
-  foto.length = 0; misure.length = 0; corrente = -1; cornice.TOP = cornice.BOT = null; pendenti = []; saltate = new Set();
+// conferma con un secondo tocco sullo stesso pulsante (le finestre confirm/alert possono essere bloccate)
+function confermaSulPulsante(btn, testo, azione) {
+  if (btn.dataset.conferma === "1") { clearTimeout(btn._t); btn.dataset.conferma = ""; btn.textContent = btn.dataset.testo; azione(); return; }
+  btn.dataset.testo = btn.textContent; btn.dataset.conferma = "1"; btn.textContent = testo;
+  btn._t = setTimeout(() => { btn.dataset.conferma = ""; btn.textContent = btn.dataset.testo; }, 4000);
+}
+function svuota() {
+  foto.length = 0; misure.length = 0; corrente = -1; cornice.TOP = cornice.BOT = null; pendenti = []; saltate = new Set(); provino = null;
   Object.keys(conta).forEach(k => conta[k] = 0); $("#avviso-foto").innerHTML = ""; messaggio("");
-  disegnaChips(); disegna(); aggiornaTabella(); aggiornaPulsanti(); aggiornaProssima();
+  disegnaChips(); disegna(); aggiornaTabella(); aggiornaPulsanti(); aggiornaProssima(); mostraProvino(); aggiornaPulsantiSalva();
+}
+$("#b-svuota").addEventListener("click", e => {
+  if (misure.length || provino) confermaSulPulsante(e.currentTarget, "Tocca di nuovo per svuotare", svuota); else svuota();
 });
+
+// ── provino a pettine ───────────────────────────────────────
+function velocita() { const t = $("#i-vel").value.trim(); if (!t || t === "-") return [];
+  return t.split(/[;\s]+/).map(num).filter(v => v > 0); }
+function statV(v) { v = v.filter(x => x !== null && x !== undefined); if (!v.length) return { n: 0, mediana: null, media: null, std: null, uA: null };
+  const s = v.length > 1 ? L.stdCamp(v) : null; return { n: v.length, mediana: L.mediana(v), media: L.media(v), std: s, uA: s !== null ? s / Math.sqrt(v.length) : null }; }
+$("#b-provino").addEventListener("click", () => analizzaProvino());
+async function analizzaProvino() {
+  const n = Math.max(1, Math.round(num($("#i-n").value) || 9)), vel = velocita(), inv = $("#c-inverti").checked, t = spessore();
+  $("#b-provino").disabled = true; const facce = {};
+  for (const lato of ["TOP", "BOT"]) {
+    const idx = foto.map((f, i) => i).filter(i => foto[i].lato === lato && foto[i].stato === "ok"); if (!idx.length) continue;
+    const tagliFoto = [];
+    for (const i of idx) { $("#avanzamento").textContent = `Riconoscimento tagli: ${lato} · ${foto[i].nome}…`; await attesa();
+      try { tagliFoto.push(L.rilevaTagli(foto[i].F, n)); } catch (e) { tagliFoto.push([]); } }
+    const { ass, n: nr } = L.assegnaTagli(tagliFoto, n), ordine = [...Array(nr).keys()]; if (lato === "BOT" && inv) ordine.reverse();
+    facce[lato] = { idx, ass, n: nr, ordine, trovati: tagliFoto.map(x => x.length) };
+  }
+  const nTot = Math.max(0, ...Object.values(facce).map(f => f.n));
+  const righe = [];
+  for (let j = 0; j < nTot; j++) { const st = {};
+    for (const lato of ["TOP", "BOT"]) { const fc = facce[lato]; st[lato] = statV(fc && j < fc.n ? fc.ass.map(a => a.has(fc.ordine[j]) ? a.get(fc.ordine[j]).r.valore : null) : []);
+      // un taglio trovato in meno della meta' delle foto non e' affidabile (es. taglio non passante): lo considero assente
+      if (fc && st[lato].n > 0 && st[lato].n < Math.ceil(fc.idx.length / 2)) st[lato] = statV([]); }
+    let ang = null, u = null;
+    if (t > 0 && st.TOP.mediana !== null && st.BOT.mediana !== null) { ang = Math.atan((st.TOP.mediana - st.BOT.mediana) / (2 * t)) * 180 / Math.PI; u = (st.TOP.uA !== null && st.BOT.uA !== null) ? Math.sqrt(st.TOP.uA ** 2 + st.BOT.uA ** 2) / (2 * t) * 180 / Math.PI : null; }
+    righe.push({ taglio: "T" + (j + 1), vel: vel.length ? vel[j % vel.length] : null, TOP: st.TOP, BOT: st.BOT, ang, u }); }
+  const perVel = [...new Set(righe.map(r => r.vel).filter(v => v !== null))].sort((a, b) => a - b).map(v => { const rr = righe.filter(r => r.vel === v);
+    const m = lato => { const x = rr.map(r => r[lato].mediana).filter(y => y !== null); return x.length ? [L.media(x), x.length > 1 ? L.stdCamp(x) : null] : [null, null]; };
+    const aa = rr.map(r => r.ang).filter(y => y !== null);
+    return { vel: v, tagli: rr.map(r => r.taglio).join(", "), top: m("TOP"), bot: m("BOT"), ang: aa.length ? L.media(aa) : null, angS: aa.length > 1 ? L.stdCamp(aa) : null }; });
+  provino = { facce, righe, perVel, n, spessore: t };
+  const zone = Object.entries(facce).map(([l, f]) => { const z = f.idx.map(i => foto[i].F.zona), r = z.filter(x => x === 'righe').length, st = z.filter(x => x === 'stabile').length;
+    return `${l}: tagli trovati per foto ${f.trovati.join(", ")}; zona misurata: tra le righe in ${r}/${z.length} foto` + (st ? `, tratto a larghezza stabile in ${st}` : ""); });
+  $("#avanzamento").textContent = zone.join(" · ");
+  const attesi = Object.entries(facce).filter(([, f]) => f.n !== n).map(([l, f]) => `${l} ${f.n}`);
+  const mancanti = Object.entries(facce).map(([l, f]) => { const m = []; for (let j = 0; j < f.n; j++) if (f.ass.filter(a => a.has(f.ordine[j])).length < Math.ceil(f.idx.length / 2)) m.push("T" + (j + 1)); return m.length ? `${l}: ${m.join(", ")}` : ""; }).filter(Boolean);
+  messaggio(attesi.length ? `Attenzione: trovati ${attesi.join(", ")} tagli invece di ${n}. Controlla l’immagine.`
+    : mancanti.length ? `Tagli non trovati (${mancanti.join(" · ")}): se il getto non ha attraversato il provino è corretto, altrimenti controlla l’immagine.` : "",
+    (attesi.length || mancanti.length) ? "warn" : "");
+  $("#b-provino").disabled = false; mostraProvino(); aggiornaPulsantiSalva(); disegna();
+}
+function mostraProvino() {
+  const box = $("#provino-ris");
+  if (!provino) { box.innerHTML = `<p class="nota" style="margin:0">Carica le foto TOP e BOT: l’analisi parte da sola.</p>`; return; }
+  const t = provino.spessore, f3 = v => fmt(v, 3), f2 = v => fmt(v, 2);
+  const cv_ = provino.righe.some(r => r.vel !== null);
+  let h = `<div class="tabella"><table><thead><tr><th>Taglio</th>${cv_ ? "<th>Velocità</th>" : ""}<th>TOP mm</th><th>u_A</th><th>N</th><th>BOT mm</th><th>u_A</th><th>N</th><th>Angolo pareti</th><th>Correzione testa</th></tr></thead><tbody>`;
+  provino.righe.forEach(r => { h += `<tr><td>${r.taglio}</td>${cv_ ? `<td>${r.vel === null ? "—" : fmt(r.vel)}</td>` : ""}<td class="forte">${f2(r.TOP.mediana)}</td><td>${f3(r.TOP.uA)}</td><td>${r.TOP.n}</td>
+    <td class="forte">${f2(r.BOT.mediana)}</td><td>${f3(r.BOT.uA)}</td><td>${r.BOT.n}</td><td class="forte">${r.ang === null ? "—" : (r.ang >= 0 ? "+" : "") + fmt(r.ang) + "°" + (r.u !== null ? " ± " + fmt(r.u) + "°" : "")}</td>
+    <td>${r.ang === null ? "—" : (r.ang <= 0 ? "+" : "−") + fmt(Math.abs(r.ang)) + "°"}</td></tr>`; });
+  h += `</tbody></table></div><p class="nota">TOP e BOT: bordo superiore del taglio (dove il grigio sale al 75% tra il nero del taglio e il metallo), su profili mediati; mediana tra le foto della mediana lungo il taglio, solo nella parte centrale (linee azzurre): tra le righe a pennarello oppure, se mancano, nel tratto in cui la larghezza è stabile. Angolo = arctan((TOP − BOT) / (2 · spessore))${t ? `, spessore ${fmt(t)} mm` : " — inserisci lo spessore al punto 1"}.</p>`;
+  if (provino.perVel.length) {
+    h += `<h3 style="font-size:16px;margin:16px 0 6px">Per velocità</h3><div class="tabella"><table><thead><tr><th>Velocità (mm/min)</th><th>Tagli</th><th>TOP mm</th><th>BOT mm</th><th>Angolo pareti</th><th>Correzione testa</th></tr></thead><tbody>`;
+    provino.perVel.forEach(q => { h += `<tr><td>${fmt(q.vel)}</td><td>${q.tagli}</td><td>${f2(q.top[0])}${q.top[1] !== null ? " ± " + f3(q.top[1]) : ""}</td><td>${f2(q.bot[0])}${q.bot[1] !== null ? " ± " + f3(q.bot[1]) : ""}</td>
+      <td class="forte">${q.ang === null ? "—" : (q.ang >= 0 ? "+" : "") + fmt(q.ang) + "°" + (q.angS !== null ? " ± " + fmt(q.angS) + "°" : "")}</td><td>${q.ang === null ? "—" : (q.ang <= 0 ? "+" : "−") + fmt(Math.abs(q.ang)) + "°"}</td></tr>`; });
+    h += `</tbody></table></div><p class="nota">Media dei tagli alla stessa velocità (± deviazione standard tra i tagli).</p>`; }
+  box.innerHTML = h;
+}
+function csvProvino() {
+  const P = provino, n = P.righe.length, righe = [], c4 = v => (v === null || v === undefined) ? "" : v.toFixed(4).replace(".", ",");
+  const cond = nome => { const u = nome.toUpperCase(), g = re => { const m = u.match(re); return m ? m[0].replace(/[^A-Z0-9]/g, "") : ""; };
+    return [g(/(^|[^A-Z0-9])L\d+/), g(/(^|[^A-Z0-9])I\d+/), g(/(^|[^A-Z0-9])R\d+/)]; };
+  righe.push(["Misure per foto"]); righe.push(["Faccia", "File", "Luce", "Inclinazione", "Replica", "px/mm", "Tagli trovati", ...P.righe.map(r => r.taglio + " (mm)")]);
+  for (const [lato, fc] of Object.entries(P.facce)) fc.idx.forEach((i, k) => { const a = fc.ass[k];
+    righe.push([lato, foto[i].nome, ...cond(foto[i].nome), c4(foto[i].F.ppm), a.size, ...P.righe.map((r, j) => j < fc.n && a.has(fc.ordine[j]) ? c4(a.get(fc.ordine[j]).r.valore) : "")]); });
+  righe.push([]); righe.push(["Dettaglio per taglio e foto"]);
+  righe.push(["Faccia", "File", "Luce", "Inclinazione", "Replica", "Taglio", "Velocità (mm/min)", "Mediana lungo il taglio (mm)", "Media (mm)", "Std lungo il taglio (mm)", "Min (mm)", "Max (mm)", "Sezioni", "Lunghezza misurata (mm)"]);
+  for (const [lato, fc] of Object.entries(P.facce)) fc.idx.forEach((i, k) => { const a = fc.ass[k];
+    for (let j = 0; j < fc.n; j++) { const t = a.get(fc.ordine[j]); if (!t) continue; const r = t.r;
+      righe.push([lato, foto[i].nome, ...cond(foto[i].nome), P.righe[j].taglio, P.righe[j].vel === null ? "" : c4(P.righe[j].vel), c4(r.valore), c4(r.media), c4(r.rms), c4(r.minimo), c4(r.massimo), r.n, c4(t.lung)]); } });
+  righe.push([]); righe.push(["Riepilogo per taglio"]);
+  righe.push(["Taglio", "Velocità (mm/min)", "TOP mediana (mm)", "TOP media", "TOP std", "TOP u_A", "N TOP", "BOT mediana (mm)", "BOT media", "BOT std", "BOT u_A", "N BOT", "Angolo pareti (°)", "u_A angolo (°)", "Correzione testa (°)"]);
+  P.righe.forEach(r => righe.push([r.taglio, r.vel === null ? "" : c4(r.vel), c4(r.TOP.mediana), c4(r.TOP.media), c4(r.TOP.std), c4(r.TOP.uA), r.TOP.n, c4(r.BOT.mediana), c4(r.BOT.media), c4(r.BOT.std), c4(r.BOT.uA), r.BOT.n, c4(r.ang), c4(r.u), r.ang === null ? "" : c4(-r.ang)]));
+  if (P.perVel.length) { righe.push([]); righe.push(["Velocità (mm/min)", "Tagli", "TOP media (mm)", "TOP std tra tagli", "BOT media (mm)", "BOT std tra tagli", "Angolo medio (°)", "Std angolo (°)", "Correzione testa (°)"]);
+    P.perVel.forEach(q => righe.push([c4(q.vel), q.tagli, c4(q.top[0]), c4(q.top[1]), c4(q.bot[0]), c4(q.bot[1]), c4(q.ang), c4(q.angS), q.ang === null ? "" : c4(-q.ang)])); }
+  righe.push([]); righe.push(["Spessore (mm)", c4(P.spessore)]); righe.push(["Scheda (mm)", c4(num($("#i-l").value)), c4(num($("#i-c").value))]);
+  return righe.map(r => r.join(";")).join("\r\n");
+}
 
 // ── strumenti ───────────────────────────────────────────────
 document.querySelectorAll(".strumenti button").forEach(b => b.addEventListener("click", () => {
@@ -1099,6 +1434,16 @@ function disegna() {
   const etichetta = (x, y, testo, col) => { ctx.save(); ctx.setTransform(d, 0, 0, d, 0, 0); const sx = tx + x * scala, sy = ty + y * scala;
     ctx.font = "600 13px Barlow, sans-serif"; const w = ctx.measureText(testo).width + 8; ctx.fillStyle = "rgba(10,12,14,0.78)"; ctx.fillRect(sx + 6, sy - 20, w, 18);
     ctx.fillStyle = col; ctx.fillText(testo, sx + 10, sy - 6); ctx.restore(); };
+  if (modo === "provino" && provino && provino.facce[f.lato]) {
+    const fc = provino.facce[f.lato], k = fc.idx.indexOf(corrente);
+    if (F.zonaMm) { ctx.save(); ctx.strokeStyle = "#2EC4F1"; ctx.lineWidth = lw; ctx.setLineDash([6 / scala, 4 / scala]);   // zona misurata
+      for (const z of F.zonaMm) { ctx.beginPath(); if (F.zonaVert) { const y = (z - F.fin[1]) * F.R; ctx.moveTo(0, y); ctx.lineTo(F.w, y); } else { const x = (z - F.fin[0]) * F.R; ctx.moveTo(x, 0); ctx.lineTo(x, F.h); } ctx.stroke(); }
+      ctx.restore(); }
+    if (k >= 0) for (let j = 0; j < fc.n; j++) { const t = fc.ass[k].get(fc.ordine[j]); if (!t) continue;
+      ctx.strokeStyle = COL.fessura; ctx.lineWidth = lw; t.r.geo.segmenti.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); });
+      const sg = t.r.geo.segmenti, s0 = j % 2 ? sg[sg.length - 1][1] : sg[0][1];   // etichette alternate in alto e in basso
+      etichetta(s0[0], s0[1], `T${j + 1} ${fmt(t.r.valore, 2)}`, COL.fessura); }
+  }
   for (const m of misure) {
     if (m.lato !== f.lato || m.daSessione) continue;
     const r = m.ris.get(corrente), col = COL[m.tipo]; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
@@ -1132,7 +1477,7 @@ function pareti() {
     const sa = statistiche(a), sb = statistiche(b); if (sa.mu === null || sb.mu === null) continue;
     let ang = null, u = null;
     if (t > 0) { const div = a.tipo === "raggio" ? t : 2 * t;   // raggio: un lato; larghezze e diametri: due lati
-      ang = Math.atan((sa.mu - sb.mu) / div) * 180 / Math.PI; u = Math.sqrt((sa.uA || 0) ** 2 + (sb.uA || 0) ** 2) / div * 180 / Math.PI; }
+      ang = Math.atan((sa.mu - sb.mu) / div) * 180 / Math.PI; u = (sa.uA !== null && sb.uA !== null) ? Math.sqrt(sa.uA ** 2 + sb.uA ** 2) / div * 180 / Math.PI : null; }
     out.push({ nome: a.nome, tipo: a.tipo, top: sa.mu, bot: sb.mu, ang, u, nt: sa.n, nb: sb.n }); }
   return out;
 }
@@ -1141,11 +1486,11 @@ function dettaglio(m, r) {
   if (r.errore) return r.errore; if (r.avviso) return r.avviso;
   if (m.tipo === "raggio") return `Ø ${fmt(2 * r.valore)} mm · arco ${fmt(r.arco, 0)}° · rms ${fmt(r.rms * 1000, 0)} µm`;
   if (m.tipo === "diametro" || m.tipo === "foro") return `R ${fmt(r.valore / 2)} mm · rms ${fmt(r.rms * 1000, 0)} µm`;
-  if (m.tipo === "fessura") return `lungo il taglio (${r.n}): mediana ${fmt(r.valore, 3)}, media ${fmt(r.media, 3)}, min ${fmt(r.minimo, 3)}, max ${fmt(r.massimo, 3)}`;
+  if (m.tipo === "fessura") return `lungo il taglio (${r.n}): mediana ${fmt(r.valore)}, media ${fmt(r.media)}, min ${fmt(r.minimo)}, max ${fmt(r.massimo)}`;
   return "";
 }
 function aggiornaTabella() {
-  const box = $("#misure"); $("#b-csv").disabled = $("#b-json").disabled = !misure.length;
+  const box = $("#misure"); aggiornaPulsantiSalva();
   if (!misure.length) { box.innerHTML = `<p class="nota" style="margin:0">Nessuna misura.</p>`; $("#pareti").innerHTML = ""; return; }
   let h = `<div class="tabella"><table><thead><tr><th>Misura</th><th>Faccia</th><th>Tipo</th><th>Foto attuale</th><th>Media</th><th>Std</th><th>u_A</th><th>N</th><th>Dettaglio</th><th></th></tr></thead><tbody>`;
   misure.forEach((m, k) => { const r = foto[corrente] && foto[corrente].lato === m.lato ? m.ris.get(corrente) : null, st = statistiche(m), u = m.tipo === "angolo" ? "°" : " mm";
@@ -1194,7 +1539,8 @@ async function salva(nome, testo, tipoMime) {
   $("#csv-fallback b").textContent = nome; $("#csv-copia").value = testo;
 }
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-$("#b-csv").addEventListener("click", () => salva(`kerf_misure_${stamp()}.csv`, "\uFEFF" + csv(), "text/csv"));
+$("#b-csv").addEventListener("click", () => modo === "provino" ? salva(`kerf_provino_${stamp()}.csv`, "\uFEFF" + csvProvino(), "text/csv")
+                                                              : salva(`kerf_misure_${stamp()}.csv`, "\uFEFF" + csv(), "text/csv"));
 $("#b-json").addEventListener("click", () => salva(`kerf_sessione_${stamp()}.json`, sessione(), "application/json"));
 $("#f-sessione").addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
@@ -1206,9 +1552,10 @@ $("#f-sessione").addEventListener("change", async e => {
     (ses.saltate || []).forEach(x => saltate.add(x));
     $("#info-sessione").textContent = `Sessione caricata: ${n} misure (riferimento per l’abbinamento TOP/BOT).`;
     aggiornaTabella(); aggiornaProssima();
-  } catch (err) { alert("File di sessione non valido."); }
+  } catch (err) { messaggio("File di sessione non valido.", "warn"); }
 });
-window.__kerf = { aggiungiPunto, chiudiMisura, stato: () => ({ foto, misure, corrente, cornice }), pareti };
+window.__kerf = { aggiungiPunto, chiudiMisura, stato: () => ({ foto, misure, corrente, cornice, provino, modo }), pareti };
+impostaModo("provino");
 })();
 </script>
 </body>
