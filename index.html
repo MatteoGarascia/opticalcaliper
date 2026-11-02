@@ -89,7 +89,7 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
     <p>Calibro ottico su foto con marker — facce superiore e inferiore, angolo delle pareti</p>
   </header>
   <p id="stato-cv">Caricamento del motore di analisi…</p>
-  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 15</p>
+  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 16</p>
 
   <section class="passo">
     <h2>Modalità</h2>
@@ -784,7 +784,7 @@ function segmenta(F, pettine = false) {
   const ap = new Uint8Array(N); for (let i = 0; i < N; i++) ap[i] = (pieno[i] && !mat[i]) ? 1 : 0;
   // fessure piu' scure del metallo (luce frontale): seconda classe di grigio dentro la sagoma
   const dentro = []; for (let i = 0; i < N; i++) if (pieno[i] && mat[i]) dentro.push(img[i]);
-  if (dentro.length > 500 && !pettine) { const t2 = otsuValori(dentro);   // nel provino basta il black-hat const lo = dentro.filter(v => v <= t2), hi = dentro.filter(v => v > t2);
+  if (dentro.length > 500 && !pettine) { /* nel provino basta il black-hat */ const t2 = otsuValori(dentro); const lo = dentro.filter(v => v <= t2), hi = dentro.filter(v => v > t2);
     if (lo.length && hi.length) { const piuScura = lo.length < hi.length, minor = piuScura ? lo : hi, major = piuScura ? hi : lo;
       const separate = Math.abs(media(major) - media(minor)) > Math.max(30, 2.5 * (stdCamp(major) + stdCamp(minor)) / 2);
       if (separate && minor.length < 0.4 * dentro.length) for (let i = 0; i < N; i++) if (pieno[i] && (piuScura ? img[i] <= t2 : img[i] > t2)) ap[i] = 1; } }
