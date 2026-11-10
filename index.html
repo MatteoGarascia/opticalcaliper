@@ -408,7 +408,9 @@ function matF32(w, h, data) { const m = new cv.Mat(h, w, cv.CV_32F); m.data32F.s
 function kern(n) { n = Math.max(3, Math.trunc(n)) | 1; return cv.Mat.ones(n, n, cv.CV_8U); }
 function morf(src, op, n) { const K = kern(n), out = new cv.Mat(); cv.morphologyEx(src, out, op, K); K.delete(); return out; }
 function sfoca(src, sigma) { const out = new cv.Mat(); cv.GaussianBlur(src, out, new cv.Size(0, 0), sigma, sigma, cv.BORDER_DEFAULT); return out; }
-function percentile(arr, p, passo = 1) { const s = []; for (let i = 0; i < arr.length; i += passo) s.push(arr[i]); s.sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(p / 100 * (s.length - 1)))] : 0; }
+function percentile(arr, p, passo = 1) { // campionamento limitato a ~150 000 valori e ordinamento numerico veloce
+  passo = Math.max(passo, Math.ceil(arr.length / 150000)); const s = new Float64Array(Math.ceil(arr.length / passo)); let n = 0;
+  for (let i = 0; i < arr.length; i += passo) s[n++] = arr[i]; const t = s.subarray(0, n).sort(); return n ? t[Math.min(n - 1, Math.floor(p / 100 * (n - 1)))] : 0; }
 function otsuValori(vals) { // soglia di Otsu su un elenco di valori 0-255
   const h = new Float64Array(256); for (const v of vals) h[Math.max(0, Math.min(255, Math.round(v)))]++;
   const n = vals.length; let sum = 0; for (let i = 0; i < 256; i++) sum += i * h[i];
@@ -516,7 +518,7 @@ function campionaS(F, x, y) { const d = liscia(F), W = F.w;
 
 // ── direzione prevalente dei bordi dritti / dei tagli rettilinei (per mettere la vista in squadra) ──
 function angoloDominante(F, pettine = false) {
-  try { const Fl = copiaRidotta(F), S = segmenta(Fl, pettine);
+  try { const Fl = copiaRidotta(F, pettine ? 12 : 7), S = segmenta(Fl, pettine); // solo per l'orientamento: nella misura libera basta una copia piu' piccola
     if (S) { const ap = matU8(Fl.w, Fl.h, S.aperture), kd = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(Math.max(3, Math.trunc(0.6 * Fl.R)) | 1, Math.max(3, Math.trunc(0.6 * Fl.R)) | 1));
       const op = new cv.Mat(); cv.morphologyEx(ap, op, cv.MORPH_OPEN, kd); ap.delete(); kd.delete();
       const C = componenti(op); op.delete(); const sx = new Float64Array(C.n), sy = new Float64Array(C.n), sxx = new Float64Array(C.n), syy = new Float64Array(C.n), sxy = new Float64Array(C.n), nn = new Float64Array(C.n);
@@ -797,7 +799,19 @@ function segmenta(F, pettine = false) {
       if (v.length > 500) { const t3 = otsuValori(v); if (t3 > 20) for (let i = 0; i < N; i++) if (er.data[i] && bh.data[i] > t3) ap[i] = 1; } }
     g1.delete(); bh.delete(); er.delete(); }
   const apM = matU8(W, H, ap), apO = morf(apM, cv.MORPH_OPEN, 0.08 * R); apM.delete(); const aperture = Uint8Array.from(apO.data); apO.delete();
-  return { pieno, aperture, contorno, contrasto, daBordi, sagoma: nomeSagoma };
+  // sagoma invertita (es. guarnizione lucida e sottile su un tappetino grigio): il piano di lavoro viene preso per il pezzo
+  // e il pezzo vero compare come una grande "apertura" con dei buchi; un'apertura vera non ha buchi, quindi i ruoli si scambiano
+  let pienoF = pieno, apF = aperture, contF = contorno;
+  if (!pettine) { const am = matU8(W, H, aperture), C = componenti(am); am.delete();
+    if (C.n > 1) { let j = 1; for (let i = 2; i < C.n; i++) if (C.stat[i].a > C.stat[j].a) j = i;
+      const parte = new Uint8Array(N); let sp = 0, spi = 0; for (let i = 0; i < N; i++) { if (C.L[i] === j) { parte[i] = 1; sp++; } if (pieno[i]) spi++; }
+      const pm = matU8(W, H, parte), pf = riempi(pm); pm.delete(); let sf = 0; for (let i = 0; i < N; i++) if (pf.data[i]) sf++;
+      if (sp > 0.10 * spi && sf - sp > 0.15 * sf) { const cs2 = contorniEsterni(pf); pienoF = Uint8Array.from(pf.data);
+        const ap2 = new Uint8Array(N); for (let i = 0; i < N; i++) ap2[i] = (pienoF[i] && !parte[i]) ? 1 : 0;
+        const a2M = matU8(W, H, ap2), a2O = morf(a2M, cv.MORPH_OPEN, 0.08 * R); a2M.delete(); apF = Uint8Array.from(a2O.data); a2O.delete();
+        if (cs2.length) contF = cs2.reduce((a, q) => q.area > a.area ? q : a).P; }
+      pf.delete(); } }
+  return { pieno: pienoF, aperture: apF, contorno: contF, contrasto, daBordi, sagoma: nomeSagoma };
 }
 
 // ── archi del contorno ──
@@ -1137,9 +1151,12 @@ function messaggio(testo, tipo = "") { const el = $("#messaggio"); if (!testo) {
 const attesa = () => new Promise(r => setTimeout(r, 30));
 
 // ── foto ────────────────────────────────────────────────────
+const LATO_MAX = 2600; // lato lungo massimo delle foto analizzate (pixel): come nella validazione, e senza bloccare il telefono
 async function leggiGrigio(file) {
-  const bmp = await createImageBitmap(file), c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
-  const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+  const bmp = await createImageBitmap(file), f = Math.min(1, LATO_MAX / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * f); c.height = Math.round(bmp.height * f);
+  const ctx = c.getContext("2d", { willReadFrequently: true }); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
   const id = ctx.getImageData(0, 0, c.width, c.height); c.width = c.height = 1;
   const rgba = cv.matFromImageData(id), g = new cv.Mat(); cv.cvtColor(rgba, g, cv.COLOR_RGBA2GRAY); rgba.delete(); return g;
 }
@@ -1178,8 +1195,10 @@ async function aggiungiFoto(files, lato) {
       const cr = cornice[lato]; let F;
       if (!cr) {
         F = L.preparaFoto(g, ml, mc, null, null, null, modo === "provino");
-        if (!F.errore) { const a = L.angoloDominante(F, modo === "provino");   // vista in squadra sul pezzo (tagli, lati dritti)
-          if (Math.abs(a.angolo) > 0.2 && a.affid > 0.15) { const F2 = L.preparaFoto(g, ml, mc, null, null, F.rot - a.angolo, modo === "provino"); if (!F2.errore) F = F2; } }
+        if (!F.errore) { messaggio(`Analisi di ${file.name} (${lato}): orientamento del pezzo…`); await attesa();
+          const a = L.angoloDominante(F, modo === "provino");   // vista in squadra sul pezzo (tagli, lati dritti)
+          if (Math.abs(a.angolo) > 0.2 && a.affid > 0.15) { messaggio(`Analisi di ${file.name} (${lato}): vista in squadra…`); await attesa();
+            const F2 = L.preparaFoto(g, ml, mc, null, null, F.rot - a.angolo, modo === "provino"); if (!F2.errore) F = F2; } }
       } else F = L.preparaFoto(g, ml, mc, cr.fin, cr.R, cr.rot);
       if (F.errore) { v.stato = "err"; v.msg = F.errore; }
       else {
@@ -1187,7 +1206,7 @@ async function aggiungiFoto(files, lato) {
         v.F = F; v.stato = "ok"; v.msg = `Scala ${fmt(F.ppm, 2)} px/mm, ${F.nMarker}/4 marker, residuo ${fmt(F.residuoMm * 1000, 0)} µm`;
         if (corrente < 0 || !foto[corrente].F) { corrente = foto.indexOf(v); requestAnimationFrame(adatta); }
         const idx = foto.indexOf(v); misure.forEach(m => { if (m.lato === lato && !m.daSessione) m.ris.set(idx, L.calcola(F, m)); });
-        if (F.ppm < 20) $("#avviso-foto").innerHTML = `<div class="avviso">Risoluzione bassa (${fmt(F.ppm, 1)} px/mm): per fessure e ponti sotto 1 mm avvicina il telefono, in modo che pezzo e scheda riempiano l’inquadratura.</div>`;
+        if (F.ppm < 12) $("#avviso-foto").innerHTML = `<div class="avviso">Risoluzione bassa (${fmt(F.ppm, 1)} px/mm): per fessure e ponti sotto 1 mm avvicina il telefono, in modo che pezzo e scheda riempiano l’inquadratura.</div>`;
       }
     } catch (err) { v.stato = "err"; v.msg = "Errore durante l’analisi: " + (err && err.message ? err.message : err); }
     finally { if (g) g.delete(); }
@@ -1257,7 +1276,7 @@ async function analizzaProvino() {
 }
 // incertezza estesa (k = 2) dal bilancio della tesi: luminosita', scheda, quota, bordo e angolo di vista
 function uBordo(s) { s = s || 10; return s <= 10 ? 0.047 : 0.047 + (Math.min(s, 20) - 10) / 10 * (0.098 - 0.047); }
-function uLargh(uA, s) { return Math.sqrt((uA || 0) ** 2 + 0.012 ** 2 + 0.0004 ** 2 + 0.006 ** 2 + uBordo(s) ** 2); }
+function uLargh(uA, s) { return Math.sqrt((uA || 0) ** 2 + 0.012 ** 2 + 0.0004 ** 2 + 0.008 ** 2 + uBordo(s) ** 2); }
 function ULargh(uA, s) { return 2 * uLargh(uA, s); }
 function UAngolo(uAt, uAb, s) { return s ? 2 * Math.sqrt(uLargh(uAt, s) ** 2 + uLargh(uAb, s) ** 2) / (2 * s) * 180 / Math.PI : null; }
 function mostraProvino() {
