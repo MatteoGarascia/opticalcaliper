@@ -89,7 +89,7 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
     <p>Calibro ottico su foto con marker — facce superiore e inferiore, angolo delle pareti</p>
   </header>
   <p id="stato-cv">Caricamento del motore di analisi…</p>
-  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 2 novembre, ore 16:30</p>
+  <p id="versione" class="nota" style="margin:-6px 0 10px">Versione 6 novembre</p>
 
   <section class="passo">
     <h2>Modalità</h2>
@@ -1255,16 +1255,25 @@ async function analizzaProvino() {
     (attesi.length || mancanti.length) ? "warn" : "");
   $("#b-provino").disabled = false; mostraProvino(); aggiornaPulsantiSalva(); disegna();
 }
+// incertezza estesa (k = 2) dal bilancio della tesi: luminosita', scheda, quota, bordo e angolo di vista
+function uBordo(s) { s = s || 10; return s <= 10 ? 0.047 : 0.047 + (Math.min(s, 20) - 10) / 10 * (0.098 - 0.047); }
+function uLargh(uA, s) { return Math.sqrt((uA || 0) ** 2 + 0.012 ** 2 + 0.0004 ** 2 + 0.006 ** 2 + uBordo(s) ** 2); }
+function ULargh(uA, s) { return 2 * uLargh(uA, s); }
+function UAngolo(uAt, uAb, s) { return s ? 2 * Math.sqrt(uLargh(uAt, s) ** 2 + uLargh(uAb, s) ** 2) / (2 * s) * 180 / Math.PI : null; }
 function mostraProvino() {
   const box = $("#provino-ris");
   if (!provino) { box.innerHTML = `<p class="nota" style="margin:0">Carica le foto TOP e BOT: l’analisi parte da sola.</p>`; return; }
   const t = provino.spessore, f3 = v => fmt(v, 3), f2 = v => fmt(v, 2);
-  const cv_ = provino.righe.some(r => r.vel !== null);
-  let h = `<div class="tabella"><table><thead><tr><th>Taglio</th>${cv_ ? "<th>Velocità</th>" : ""}<th>TOP mm</th><th>u_A</th><th>N</th><th>BOT mm</th><th>u_A</th><th>N</th><th>Angolo pareti</th><th>Correzione testa</th></tr></thead><tbody>`;
-  provino.righe.forEach(r => { h += `<tr><td>${r.taglio}</td>${cv_ ? `<td>${r.vel === null ? "—" : fmt(r.vel)}</td>` : ""}<td class="forte">${f2(r.TOP.mediana)}</td><td>${f3(r.TOP.uA)}</td><td>${r.TOP.n}</td>
-    <td class="forte">${f2(r.BOT.mediana)}</td><td>${f3(r.BOT.uA)}</td><td>${r.BOT.n}</td><td class="forte">${r.ang === null ? "—" : (r.ang >= 0 ? "+" : "") + fmt(r.ang) + "°" + (r.u !== null ? " ± " + fmt(r.u) + "°" : "")}</td>
-    <td>${r.ang === null ? "—" : (r.ang <= 0 ? "+" : "−") + fmt(Math.abs(r.ang)) + "°"}</td></tr>`; });
-  h += `</tbody></table></div><p class="nota">TOP e BOT: bordo superiore del taglio (dove il grigio sale al 75% tra il nero del taglio e il metallo), su profili mediati; mediana tra le foto della mediana lungo il taglio, solo nella parte centrale (linee azzurre): tra le righe a pennarello oppure, se mancano, nel tratto in cui la larghezza è stabile. Angolo = arctan((TOP − BOT) / (2 · spessore))${t ? `, spessore ${fmt(t)} mm` : " — inserisci lo spessore al punto 1"}.</p>`;
+  const cv_ = provino.righe.some(r => r.vel !== null), anomali = [];
+  const w = (r, lato) => { const q = r[lato]; if (q.mediana === null) return "—"; if ((q.uA || 0) > 0.010) anomali.push(r.taglio + " " + lato);
+    return `${f2(q.mediana)} ± ${f2(ULargh(q.uA, t))} mm`; };
+  let h = `<div class="tabella"><table><thead><tr><th>Taglio</th>${cv_ ? "<th>Velocità</th>" : ""}<th>Larghezza TOP</th><th>Larghezza BOT</th><th>Angolo pareti</th><th>Correzione testa</th></tr></thead><tbody>`;
+  provino.righe.forEach(r => { const Ua = r.ang === null ? null : UAngolo(r.TOP.uA, r.BOT.uA, t);
+    h += `<tr><td>${r.taglio}</td>${cv_ ? `<td>${r.vel === null ? "—" : fmt(r.vel)}</td>` : ""}<td class="forte">${w(r, "TOP")}</td><td class="forte">${w(r, "BOT")}</td>
+    <td class="forte">${r.ang === null ? "—" : (r.ang >= 0 ? "+" : "") + fmt(r.ang, 1) + "° ± " + fmt(Ua, 1) + "°"}</td>
+    <td>${r.ang === null ? "—" : (r.ang <= 0 ? "+" : "−") + fmt(Math.abs(r.ang), 1) + "°"}</td></tr>`; });
+  h += `</tbody></table></div><p class="nota">Incertezza estesa (k = 2), valida con il protocollo di acquisizione: fondo nero, luce piena, provino centrato sotto l’obiettivo, scheda alla quota della superficie fotografata.${t ? "" : " Inserisci lo spessore al punto 1 per l’angolo delle pareti."} I dettagli (mediana, media, u_A, numero di foto) sono nel file CSV.</p>`;
+  if (anomali.length) h += `<p class="avviso warn" style="margin-top:8px">Dispersione tra le foto anomala su ${anomali.join(", ")}: l’incertezza dichiarata potrebbe non valere (riflessi, foto mosse o condizioni diverse tra gli scatti).</p>`;
   if (provino.perVel.length) {
     h += `<h3 style="font-size:16px;margin:16px 0 6px">Per velocità</h3><div class="tabella"><table><thead><tr><th>Velocità (mm/min)</th><th>Tagli</th><th>TOP mm</th><th>BOT mm</th><th>Angolo pareti</th><th>Correzione testa</th></tr></thead><tbody>`;
     provino.perVel.forEach(q => { h += `<tr><td>${fmt(q.vel)}</td><td>${q.tagli}</td><td>${f2(q.top[0])}${q.top[1] !== null ? " ± " + f3(q.top[1]) : ""}</td><td>${f2(q.bot[0])}${q.bot[1] !== null ? " ± " + f3(q.bot[1]) : ""}</td>
@@ -1285,8 +1294,9 @@ function csvProvino() {
     for (let j = 0; j < fc.n; j++) { const t = a.get(fc.ordine[j]); if (!t) continue; const r = t.r;
       righe.push([lato, foto[i].nome, ...cond(foto[i].nome), P.righe[j].taglio, P.righe[j].vel === null ? "" : c4(P.righe[j].vel), c4(r.valore), c4(r.media), c4(r.rms), c4(r.minimo), c4(r.massimo), r.n, c4(t.lung)]); } });
   righe.push([]); righe.push(["Riepilogo per taglio"]);
-  righe.push(["Taglio", "Velocità (mm/min)", "TOP mediana (mm)", "TOP media", "TOP std", "TOP u_A", "N TOP", "BOT mediana (mm)", "BOT media", "BOT std", "BOT u_A", "N BOT", "Angolo pareti (°)", "u_A angolo (°)", "Correzione testa (°)"]);
-  P.righe.forEach(r => righe.push([r.taglio, r.vel === null ? "" : c4(r.vel), c4(r.TOP.mediana), c4(r.TOP.media), c4(r.TOP.std), c4(r.TOP.uA), r.TOP.n, c4(r.BOT.mediana), c4(r.BOT.media), c4(r.BOT.std), c4(r.BOT.uA), r.BOT.n, c4(r.ang), c4(r.u), r.ang === null ? "" : c4(-r.ang)]));
+  righe.push(["Taglio", "Velocità (mm/min)", "TOP mediana (mm)", "TOP media", "TOP std", "TOP u_A", "N TOP", "BOT mediana (mm)", "BOT media", "BOT std", "BOT u_A", "N BOT", "Angolo pareti (°)", "u_A angolo (°)", "Correzione testa (°)", "U TOP k=2 (mm)", "U BOT k=2 (mm)", "U angolo k=2 (°)"]);
+  P.righe.forEach(r => righe.push([r.taglio, r.vel === null ? "" : c4(r.vel), c4(r.TOP.mediana), c4(r.TOP.media), c4(r.TOP.std), c4(r.TOP.uA), r.TOP.n, c4(r.BOT.mediana), c4(r.BOT.media), c4(r.BOT.std), c4(r.BOT.uA), r.BOT.n, c4(r.ang), c4(r.u), r.ang === null ? "" : c4(-r.ang),
+    r.TOP.mediana === null ? "" : c4(ULargh(r.TOP.uA, P.spessore)), r.BOT.mediana === null ? "" : c4(ULargh(r.BOT.uA, P.spessore)), r.ang === null ? "" : c4(UAngolo(r.TOP.uA, r.BOT.uA, P.spessore))]));
   if (P.perVel.length) { righe.push([]); righe.push(["Velocità (mm/min)", "Tagli", "TOP media (mm)", "TOP std tra tagli", "BOT media (mm)", "BOT std tra tagli", "Angolo medio (°)", "Std angolo (°)", "Correzione testa (°)"]);
     P.perVel.forEach(q => righe.push([c4(q.vel), q.tagli, c4(q.top[0]), c4(q.top[1]), c4(q.bot[0]), c4(q.bot[1]), c4(q.ang), c4(q.angS), q.ang === null ? "" : c4(-q.ang)])); }
   righe.push([]); righe.push(["Spessore (mm)", c4(P.spessore)]); righe.push(["Scheda (mm)", c4(num($("#i-l").value)), c4(num($("#i-c").value))]);
@@ -1484,8 +1494,8 @@ function pareti() {
 function dettaglio(m, r) {
   if (!r) return m.daSessione ? "dalla sessione salvata" : "";
   if (r.errore) return r.errore; if (r.avviso) return r.avviso;
-  if (m.tipo === "raggio") return `Ø ${fmt(2 * r.valore)} mm · arco ${fmt(r.arco, 0)}° · rms ${fmt(r.rms * 1000, 0)} µm`;
-  if (m.tipo === "diametro" || m.tipo === "foro") return `R ${fmt(r.valore / 2)} mm · rms ${fmt(r.rms * 1000, 0)} µm`;
+  if (m.tipo === "raggio") return `Ø ${fmt(2 * r.valore)} mm`;
+  if (m.tipo === "diametro" || m.tipo === "foro") return `R ${fmt(r.valore / 2)} mm`;
   if (m.tipo === "fessura") return `lungo il taglio (${r.n}): mediana ${fmt(r.valore)}, media ${fmt(r.media)}, min ${fmt(r.minimo)}, max ${fmt(r.massimo)}`;
   return "";
 }
