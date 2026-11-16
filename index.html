@@ -187,8 +187,8 @@ textarea#csv-copia { width: 100%; min-height: 140px; font-family: ui-monospace, 
 function creaLibero(cv) {
 
 const LAYOUT = { lato: 15, pos: { 0: [0, 0], 1: [45, 0], 2: [0, 25], 3: [45, 25] }, L: 60, C: 40 };
-// metodo (come smartcaliper.py): bordo al 78% tra fondo del taglio e metallo, zona tra le righe a pennarello (1 mm di margine) o, senza righe, finestra fissa di 45 sezioni a passo 0,5 mm
-// centrata su ogni taglio, sezioni a meno di 1 mm dalle righe a pennarello scartate, taglio con piu' di 5 scartate poco affidabile
+// metodo (come smartcaliper.py): bordo al 78% tra fondo del taglio e metallo, 45 sezioni a passo 0,5 mm (22 mm) centrate tra le righe a pennarello o, senza righe, sul centro del taglio
+// taglio con piu' di 5 sezioni scartate poco affidabile
 const FRAZ_METALLO = 0.78, N_SEZIONI = 45, PASSO_SEZIONI = 0.5, MARGINE_RIGHE = 1.0, MAX_SCARTATE = 5, TOLL_LUNGHEZZA = 3.0;
 const mediana = a => { const b = Float64Array.from(a).sort(), n = b.length; return n ? (n % 2 ? b[(n - 1) / 2] : (b[n / 2 - 1] + b[n / 2]) / 2) : NaN; };
 const media = a => a.reduce((s, v) => s + v, 0) / a.length;
@@ -661,8 +661,9 @@ function misuraMaschera(F, m) {
 }
 function misuraFessura(F, m) {
   if (m.metodo === 'maschera') return misuraMaschera(F, m);
-  if (m.metodo === 'bordo_metallo') { // bordo superiore al 78% tra nero e metallo (piede della rampa della parete), profili mediati
-    const r = misuraFessura(F, { ...m, metodo: 'nero', frac: FRAZ_METALLO, striscia: true }); return r.errore ? misuraFessura(F, { ...m, metodo: 'combinato' }) : r; }
+  if (m.metodo === 'bordo_metallo') { // bordo superiore al 78% tra nero e metallo (piede della rampa della parete), profili mediati;
+    // senza ripiego: se i bordi non si trovano il taglio non e' misurato in quella foto ed e' escluso dalla media delle foto
+    return misuraFessura(F, { ...m, metodo: 'nero', frac: FRAZ_METALLO, striscia: true }); }
   if (m.metodo === 'combinato') { // gradiente su profilo mediato, con la maschera come controllo (oltre 0,15 mm vale la maschera)
     const rg = misuraFessura(F, { ...m, metodo: undefined, striscia: true }), rm = misuraMaschera(F, m);
     if (rg.errore) return rm; if (rm.errore) return rg;
@@ -670,7 +671,7 @@ function misuraFessura(F, m) {
   const R = F.R, L = (0.75 * m.larg_mm + 0.4) * R, passo = 0.25, val = [], segm = [], pos = [], misura = m.metodo === 'soglia' ? larghezzaSoglia : m.metodo === 'nero' ? ((p, q) => larghezzaNera(p, q, m.frac ?? 0.35)) : larghezzaProfiloAuto;
   m.tocchi.forEach(([x, y], i) => { const [nx, ny] = m.normali[i], cx = (x - F.fin[0]) * R, cy = (y - F.fin[1]) * R;
     let pr; if (m.striscia) { // profilo mediato su una striscia di +-0,4 mm lungo il taglio (toglie la grana del metallo)
-      const pp = [-0.4, -0.2, 0, 0.2, 0.4].map(o => profilo(F, cx - o * R * ny, cy + o * R * nx, nx, ny, -L, L, passo)); pr = pp[0].map((_, i) => mediana(pp.map(q => q[i]))); }
+      const pp = [-0.4, -0.2, 0, 0.2, 0.4].map(o => profilo(F, cx - o * R * ny, cy + o * R * nx, nx, ny, -L, L, passo)); pr = pp[0].map((_, i) => media(pp.map(q => q[i]))); }   // MEDIA dei 5 profili paralleli
     else pr = profilo(F, cx, cy, nx, ny, -L, L, passo);
     if (m.no_saturi && Math.max(...pr) >= 250) return;   // riflesso: bordo inaffidabile
     const r = misura(pr, passo); if (!r) return;
@@ -1016,10 +1017,9 @@ function trovaRighe(F, tagli) {
   if (scelti.length < 2) return null; scelti.sort((p, q) => p - q);
   return [(scelti[0] + a0) / R + off, (scelti[1] + a0) / R + off];
 }
-// zona di misura, sezioni a passo PASSO_SEZIONI: TRA le righe a pennarello se trovate (da riga 1 + 1 mm a riga 2 - 1 mm, quante ci stanno),
-// altrimenti finestra FISSA di N_SEZIONI sezioni (22 mm) centrata sul centro di ogni taglio,
-// sull'asse del taglio; le sezioni a meno di margine mm da una riga a pennarello sono scartate (le posizioni restano 45,
-// la media si fa sulle valide); un taglio con piu' di MAX_SCARTATE sezioni scartate e' poco affidabile
+// zona di misura: sempre N_SEZIONI sezioni a passo PASSO_SEZIONI (22 mm) sull'asse del taglio, centrate sul punto medio
+// tra le righe a pennarello se trovate, altrimenti sul centro di ogni taglio; la media si fa sulle sezioni valide;
+// un taglio con piu' di MAX_SCARTATE sezioni scartate e' poco affidabile
 function parteCentrale(F, tagli, margine = MARGINE_RIGHE) {
   const k = tagli[0].verso === 'v' ? 1 : 0; let righe = trovaRighe(F, tagli);
   if (righe) { // buon senso: la zona tra le righe deve stare a meta' taglio e coprirne una parte ragionevole
@@ -1036,9 +1036,9 @@ function parteCentrale(F, tagli, margine = MARGINE_RIGHE) {
     for (const [x, y] of P) { a += (x - mx) ** 2; b += (x - mx) * (y - my); c += (y - my) ** 2; }
     const th = 0.5 * Math.atan2(2 * b, a - c), d = [Math.cos(th), Math.sin(th)], cen = [mx, my]; if (Math.abs(d[k]) < 1e-6) return;
     const nrm = [-d[1], d[0]], centroComune = Math.abs((e[1] - e[0]) - Lmed) > TOLL_LUNGHEZZA && cComune !== null, cc = centroComune ? cComune : (e[0] + e[1]) / 2;
-    // righe trovate: zona TRA le righe, da (riga 1 + 1 mm) a (riga 2 - 1 mm), tutte le sezioni che ci stanno; altrimenti finestra fissa
-    const pos = righe ? [...Array(Math.floor((righe[1] - righe[0] - 2 * margine) / PASSO_SEZIONI + 1e-9) + 1).keys()].map(i => righe[0] + margine + PASSO_SEZIONI * i)
-                      : [...Array(N_SEZIONI).keys()].map(i => cc + PASSO_SEZIONI * (i - (N_SEZIONI - 1) / 2));
+    // sempre N_SEZIONI sezioni (22 mm): centrate sul punto medio tra le righe se trovate, altrimenti sul centro del taglio
+    const c0 = righe ? (righe[0] + righe[1]) / 2 : cc;
+    const pos = [...Array(N_SEZIONI).keys()].map(i => c0 + PASSO_SEZIONI * (i - (N_SEZIONI - 1) / 2));
     const vicine = [];
     const toc = pos.filter(s => !vicine.includes(s)).map(s => [cen[0] + ((s - cen[k]) / d[k]) * d[0], cen[1] + ((s - cen[k]) / d[k]) * d[1]]);
     if (toc.length < 3) return;
@@ -1314,7 +1314,7 @@ async function analizzaProvino() {
   const zone = Object.entries(facce).map(([l, f]) => { const r = f.idx.filter(i => foto[i].F.righe).length;
     const sc = f.ass.flatMap((a, q) => [...a.values()].map(t => t.r.scartate)), esc = f.ass.flatMap(a => [...a.values()].filter(t => t.r.pocoAffidabile)).length;
     const nz = f.ass.flatMap(a => [...a.values()].map(t => t.r.nSezioni)), ns = [...new Set(nz)].sort((a, b) => a - b).join(", ");
-    return `${l}: tagli trovati per foto ${f.trovati.join(", ")}; righe a pennarello trovate in ${r}/${f.idx.length} foto (zona tra le righe), altrimenti finestra fissa di 45 sezioni; ` +
+    return `${l}: tagli trovati per foto ${f.trovati.join(", ")}; righe a pennarello trovate in ${r}/${f.idx.length} foto (45 sezioni centrate tra le righe), altrimenti 45 sezioni centrate sul taglio;` +
       `sezioni per taglio ${ns}; sezioni scartate ${sc.reduce((s, v) => s + v, 0)} su ${nz.reduce((s, v) => s + v, 0)}` + (esc ? `; ${esc} tagli poco affidabili (> 5 scartate) esclusi dalla media` : ""); });
   $("#avanzamento").textContent = zone.join(" · ");
   const attesi = Object.entries(facce).filter(([, f]) => f.n !== n).map(([l, f]) => `${l} ${f.n}`);
@@ -1325,9 +1325,9 @@ async function analizzaProvino() {
   $("#b-provino").disabled = false; mostraProvino(); aggiornaPulsantiSalva(); disegna();
 }
 // incertezza estesa (k = 2) dal bilancio della tesi (come smartcaliper.py), uguale per TOP e BOT:
-// u_A = max(misurato, 0,0087), u_edge 0,0724 (definizione del bordo, serie 2, 27 tagli), u_light 0,0128, u_scale 0,0083,
-// u_pxl 0,0248, u_cal 0,0002, u_incl 0,0001 mm  ->  U = 0,16 mm
-const U_A_BILANCIO = 0.0087, U_EDGE = 0.0724, U_B_LUCE = 0.0128, U_B_QUOTA = 0.0083, U_B_PIXEL = 0.0248, U_B_SCHEDA = 0.0002, U_B_INCL = 0.0001, U_A_ANOMALA = 0.010;
+// u_A = max(misurato, 0,0104), u_edge 0,0695 (definizione del bordo, serie 2, 27 tagli), u_light 0,0129, u_scale 0,0006,
+// u_pxl 0,0248, u_cal 0,0002, u_incl 0,0001 mm  ->  U = 0,15 mm
+const U_A_BILANCIO = 0.0104, U_EDGE = 0.0695, U_B_LUCE = 0.0129, U_B_QUOTA = 0.0006, U_B_PIXEL = 0.0248, U_B_SCHEDA = 0.0002, U_B_INCL = 0.0001, U_A_ANOMALA = 0.010;
 function uLargh(uA, s) { const a = Math.max(uA || 0, U_A_BILANCIO); return Math.sqrt(a ** 2 + U_B_LUCE ** 2 + U_B_SCHEDA ** 2 + U_B_QUOTA ** 2 + U_B_PIXEL ** 2 + U_B_INCL ** 2 + U_EDGE ** 2); }
 function ULargh(uA, s) { return 2 * uLargh(uA, s); }
 function UAngolo(uAt, uAb, s) { return s ? 2 * Math.sqrt(uLargh(uAt, s) ** 2 + uLargh(uAb, s) ** 2) / (2 * s) * 180 / Math.PI : null; }
@@ -1522,7 +1522,7 @@ function disegna() {
       if (F.zonaVert) ctx.fillRect(0, Math.min(a, b), F.w, Math.abs(b - a)); else ctx.fillRect(Math.min(a, b), 0, Math.abs(b - a), F.h);
       ctx.strokeStyle = "#2EC4F1"; ctx.lineWidth = lw; ctx.setLineDash([6 / scala, 4 / scala]);
       for (const p of [a, b]) { ctx.beginPath(); if (F.zonaVert) { ctx.moveTo(0, p); ctx.lineTo(F.w, p); } else { ctx.moveTo(p, 0); ctx.lineTo(p, F.h); } ctx.stroke(); }
-      ctx.restore(); const testo = F.righe ? "zona tra le righe" : "finestra fissa";
+      ctx.restore(); const testo = F.righe ? "45 sezioni centrate tra le righe" : "45 sezioni centrate sul taglio";
       if (F.zonaVert) etichetta(4, (a + b) / 2 + 9 / scala, testo, "#2EC4F1"); else etichetta((a + b) / 2, 18 / scala, testo, "#2EC4F1"); }
     if (F.righe) { ctx.save(); ctx.strokeStyle = "#F5B700"; ctx.lineWidth = 1.5 * lw; ctx.setLineDash([3 / scala, 3 / scala]);   // righe a pennarello trovate
       for (const p of F.righe.map(pxZ)) { ctx.beginPath(); if (F.zonaVert) { ctx.moveTo(0, p); ctx.lineTo(F.w, p); } else { ctx.moveTo(p, 0); ctx.lineTo(p, F.h); } ctx.stroke(); }
