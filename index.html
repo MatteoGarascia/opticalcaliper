@@ -1325,10 +1325,10 @@ async function analizzaProvino() {
   $("#b-provino").disabled = false; mostraProvino(); aggiornaPulsantiSalva(); disegna();
 }
 // incertezza estesa (k = 2) dal bilancio della tesi (come smartcaliper.py), uguale per TOP e BOT:
-// u_A = max(misurato, 0,0104), u_edge 0,0695 (definizione del bordo, serie 2, 27 tagli), u_light 0,0129, u_scale 0,0006,
+// u_A = max(misurato, 0,0104), u_edge 0,0695 (definizione del bordo, serie 2, 27 tagli), u_light 0,0129,
 // u_pxl 0,0248, u_cal 0,0002, u_incl 0,0001 mm  ->  U = 0,15 mm
-const U_A_BILANCIO = 0.0104, U_EDGE = 0.0695, U_B_LUCE = 0.0129, U_B_QUOTA = 0.0006, U_B_PIXEL = 0.0248, U_B_SCHEDA = 0.0002, U_B_INCL = 0.0001, U_A_ANOMALA = 0.010;
-function uLargh(uA, s) { const a = Math.max(uA || 0, U_A_BILANCIO); return Math.sqrt(a ** 2 + U_B_LUCE ** 2 + U_B_SCHEDA ** 2 + U_B_QUOTA ** 2 + U_B_PIXEL ** 2 + U_B_INCL ** 2 + U_EDGE ** 2); }
+const U_A_BILANCIO = 0.0104, U_EDGE = 0.0695, U_B_LUCE = 0.0129, U_B_PIXEL = 0.0248, U_B_SCHEDA = 0.0002, U_B_INCL = 0.0001, U_A_ANOMALA = 0.010;
+function uLargh(uA, s) { const a = Math.max(uA || 0, U_A_BILANCIO); return Math.sqrt(a ** 2 + U_B_LUCE ** 2 + U_B_SCHEDA ** 2 + U_B_PIXEL ** 2 + U_B_INCL ** 2 + U_EDGE ** 2); }
 function ULargh(uA, s) { return 2 * uLargh(uA, s); }
 function UAngolo(uAt, uAb, s) { return s ? 2 * Math.sqrt(uLargh(uAt, s) ** 2 + uLargh(uAb, s) ** 2) / (2 * s) * 180 / Math.PI : null; }
 function mostraProvino() {
